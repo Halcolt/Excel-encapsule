@@ -1,0 +1,246 @@
+function addRowColMarkers(table){
+        const dataHeader=table.tHead.rows[0];
+        dataHeader.dataset.role='data-header';
+        const markerRow=table.tHead.insertRow(0);
+        markerRow.dataset.role='marker-row';
+        const corner=document.createElement('th'); corner.className='corner-marker'; markerRow.appendChild(corner);
+        const headerCorner=document.createElement('th'); headerCorner.className='corner-marker'; dataHeader.insertBefore(headerCorner, dataHeader.firstChild);
+        const colCount=dataHeader.cells.length-1;
+        for(let c=0;c<colCount;c++){
+          const th=document.createElement('th'); th.className='col-marker'; th.dataset.colIndex=c; th.textContent=columnLabel(c); markerRow.appendChild(th);
+        }
+        Array.from(table.tBodies[0].rows).forEach((row, idx)=>{
+          const marker=document.createElement('th'); marker.className='row-marker'; marker.dataset.rowIndex=idx; marker.textContent=idx+1; row.insertBefore(marker, row.firstChild);
+        });
+        table.dataset.markerOffset='1';
+      }
+      function stripEnhancements(table){
+        if(!table.tHead) return;
+        const thead=table.tHead;
+        const markerRow=Array.from(thead.rows).find(r=>r.dataset.role==='marker-row');
+        if(markerRow) markerRow.remove();
+        const header=thead.querySelector('tr[data-role="data-header"]') || thead.rows[0];
+        if(header && !header.dataset.role) header.dataset.role='data-header';
+        if(header){
+          header.querySelectorAll('.filter-btn').forEach(btn=>btn.remove());
+          const firstCell=header.cells[0];
+          if(firstCell && firstCell.classList.contains('corner-marker')) header.deleteCell(0);
+        }
+        const bodyRows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        bodyRows.forEach(row=>{
+          row.classList.remove('selected-row');
+          row.querySelectorAll('td').forEach(cell=>cell.classList.remove('cell-selected'));
+          const first=row.cells[0];
+          if(first && first.classList.contains('row-marker')) row.deleteCell(0);
+        });
+        delete table.dataset.markerOffset;
+        table._selectedRows=new Set();
+        table._selectedCols=new Set();
+        table._selectedCells=new Set();
+        delete table.dataset.cellSelectionBound;
+      }
+      function collectUnique(table){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        const colCount=header? header.cells.length - offset : 0;
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const sets=Array.from({length:colCount},()=>new Set());
+        rows.forEach(r=>{ for(let c=0;c<colCount;c++){ const cell=r.cells[c+offset]; const text=(cell?cell.innerText:''); sets[c].add(text); } });
+        return sets.map(s=>Array.from(s).sort((a,b)=>a.localeCompare(b)));
+      }
+      function setupFilters(table, summaryEl){
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        if(!header) return;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const unique=collectUnique(table);
+        const state=unique.map(()=>[]);
+        table._filters=state;
+        for(let c=offset;c<header.cells.length;c++){
+          const th=header.cells[c];
+          const btn=document.createElement('button'); btn.type='button'; btn.className='filter-btn'; btn.title='{{ t('filter') }}'; btn.textContent='\u25BE';
+          btn.dataset.colIndex=c-offset;
+          btn.addEventListener('click',(e)=>openFilterPanel(e.currentTarget, table, parseInt(e.currentTarget.dataset.colIndex,10), summaryEl));
+          th.appendChild(btn);
+        }
+        renderFilterTags(summaryEl, state);
+      }
+      function renderFilterTags(summaryEl, filters){
+        summaryEl.innerHTML='';
+        filters.forEach((vals, idx)=>{
+          if(vals && vals.length){
+            const pill=document.createElement('span'); pill.className='filter-tag'; pill.textContent=`${columnLabel(idx)} (${vals.length})`;
+            summaryEl.appendChild(pill);
+          }
+        });
+        if(filterTagsGlobal && activePanel && summaryEl.closest('.panel') === activePanel){
+          filterTagsGlobal.innerHTML = summaryEl.innerHTML;
+        }
+      }
+      function openFilterPanel(anchor, table, col, summaryEl){
+        closeFilterPanel();
+        const panel=document.createElement('div'); panel.className='filter-panel'; panel.id='filterPanel';
+        const rect=anchor.getBoundingClientRect();
+        panel.style.left=(window.scrollX+rect.left)+'px'; panel.style.top=(window.scrollY+rect.bottom+4)+'px';
+        const values=collectUnique(table)[col];
+        const search=document.createElement('input'); search.className='search'; search.placeholder='{{ t('filter_search') }}';
+        const list=document.createElement('div'); list.className='list';
+        const controls=document.createElement('div'); controls.className='actions';
+        const applyBtn=document.createElement('button'); applyBtn.className='btn primary'; applyBtn.textContent='{{ t('filter_apply') }}';
+        const clearBtn=document.createElement('button'); clearBtn.className='btn secondary'; clearBtn.textContent='{{ t('filter_clear') }}';
+        const selected=new Set(table._filters[col]||[]);
+        function renderList(){
+          list.innerHTML='';
+          const q=(search.value||'').toLowerCase();
+          values.filter(v=>v.toLowerCase().includes(q)).forEach(v=>{
+            const label=document.createElement('label'); label.style.display='block';
+            const cb=document.createElement('input'); cb.type='checkbox'; cb.value=v; cb.checked=selected.has(v);
+            label.appendChild(cb); label.appendChild(document.createTextNode(' '+(v===''?'{{ t('filter_blank') }}':v)));
+            cb.addEventListener('change',()=>{ if(cb.checked) selected.add(v); else selected.delete(v); });
+            list.appendChild(label);
+          });
+        }
+        renderList();
+        search.addEventListener('input',renderList);
+        applyBtn.addEventListener('click',()=>{ table._filters[col]=Array.from(selected); applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+        clearBtn.addEventListener('click',()=>{ selected.clear(); table._filters[col]=[]; applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+        panel.appendChild(search); panel.appendChild(list); controls.appendChild(clearBtn); controls.appendChild(applyBtn); panel.appendChild(controls);
+        document.body.appendChild(panel); panel.style.display='block';
+        setTimeout(()=>{ document.addEventListener('click',outsideClose,{ once:true }); },0);
+        function outsideClose(ev){ if(!panel.contains(ev.target) && ev.target!==anchor){ closeFilterPanel(); } }
+      }
+      function closeFilterPanel(){ const p=document.getElementById('filterPanel'); if(p) p.remove(); }
+      function clearAllFilters(table, summaryEl){ if(!table._filters) return; table._filters=table._filters.map(()=>[]); applyFilters(table); renderFilterTags(summaryEl, table._filters); }
+      function applyFilters(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const filters=table._filters || [];
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        rows.forEach(row=>{
+          let show=true;
+          for(let c=0;c<filters.length;c++){
+            const chosen=filters[c]; if(!chosen || chosen.length===0) continue;
+            const text=(row.cells[c+offset]?row.cells[c+offset].innerText:'');
+            if(!chosen.includes(text)){ show=false; break; }
+          }
+          row.style.display=show?'':'none';
+        });
+      }
+      function attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn){
+        table._selectedRows = new Set();
+        table._selectedCols = new Set();
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach((row, idx)=>{
+          const marker=row.querySelector('.row-marker');
+          marker?.addEventListener('click',(ev)=>{
+            handleToggle(ev, table._selectedRows, idx);
+            refreshRowHighlights(table);
+            updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+          });
+        });
+        table.querySelectorAll('.col-marker').forEach(marker=>{
+          const colIdx=parseInt(marker.dataset.colIndex,10);
+          marker.addEventListener('click',(ev)=>{
+            handleToggle(ev, table._selectedCols, colIdx);
+            refreshColHighlights(table);
+            updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+          });
+        });
+        function handleToggle(ev, set, value){
+          const additive = ev.ctrlKey || ev.metaKey;
+          if(!additive){ set.clear(); }
+          if(additive && set.has(value)) set.delete(value); else set.add(value);
+        }
+      }
+      function refreshRowHighlights(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach((row, idx)=>{
+          if(table._selectedRows && table._selectedRows.has(idx)) row.classList.add('selected-row'); else row.classList.remove('selected-row');
+        });
+      }
+      function refreshColHighlights(table){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const markers=table.querySelectorAll('.col-marker');
+        markers.forEach(marker=>{
+          const idx=parseInt(marker.dataset.colIndex,10);
+          if(table._selectedCols && table._selectedCols.has(idx)) marker.classList.add('col-selected'); else marker.classList.remove('col-selected');
+        });
+        rows.forEach(row=>{
+          for(let c=offset;c<row.cells.length;c++){
+            row.cells[c].classList.remove('col-selected');
+          }
+        });
+        if(table._selectedCols){
+          table._selectedCols.forEach(colIdx=>{
+            rows.forEach(row=>{
+              const cell=row.cells[colIdx+offset]; if(cell) cell.classList.add('col-selected');
+            });
+          });
+        }
+      }
+      function attachCellSelection(table){
+        table._selectedCells = new Set();
+        if(table.dataset.cellSelectionBound==='1') return;
+        table.addEventListener('click',(ev)=>{
+          const cell=ev.target.closest('td');
+          if(!cell || !table.contains(cell)) return;
+          const row=cell.closest('tr');
+          if(!row || row.parentElement?.tagName !== 'TBODY') return;
+          const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+          const rowIdx=rows.indexOf(row);
+          if(rowIdx<0) return;
+          const offset=parseInt(table.dataset.markerOffset || '0',10);
+          const colIdx=Array.from(row.cells).indexOf(cell)-offset;
+          if(colIdx<0) return;
+          const key=`${rowIdx}:${colIdx}`;
+          const additive = ev.ctrlKey || ev.metaKey;
+          if(!additive) table._selectedCells.clear();
+          if(additive && table._selectedCells.has(key)) table._selectedCells.delete(key);
+          else table._selectedCells.add(key);
+          refreshCellHighlights(table);
+        });
+        table.dataset.cellSelectionBound='1';
+      }
+      function refreshCellHighlights(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach(row=>{
+          row.querySelectorAll('td').forEach(cell=>cell.classList.remove('cell-selected'));
+        });
+        if(!table._selectedCells) return;
+        table._selectedCells.forEach(key=>{
+          const cell=getCellByKey(table, key);
+          if(cell) cell.classList.add('cell-selected');
+        });
+      }
+      function getCellByKey(table, key){
+        const [rowIdx, colIdx]=key.split(':').map(Number);
+        if(Number.isNaN(rowIdx) || Number.isNaN(colIdx)) return null;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const row=rows[rowIdx];
+        if(!row) return null;
+        return row.cells[colIdx+offset] || null;
+      }
+      function updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn){
+        const rows = table._selectedRows ? Array.from(table._selectedRows).map(i=>i+1).sort((a,b)=>a-b) : [];
+        const cols = table._selectedCols ? Array.from(table._selectedCols).map(columnLabel).sort((a,b)=>a.localeCompare(b)) : [];
+        rowInput.value = rows.join(', ');
+        colInput.value = cols.join(', ');
+        if(deleteRowsBtn) deleteRowsBtn.disabled = rows.length===0;
+        if(deleteColsBtn) deleteColsBtn.disabled = cols.length===0;
+        if(deleteBlankBtn) deleteBlankBtn.disabled = cols.length===0;
+        if(activePanel && table.closest('.panel') === activePanel){
+          if(rowInputGlobal) rowInputGlobal.value = rowInput.value;
+          if(colInputGlobal) colInputGlobal.value = colInput.value;
+          if(deleteRowsGlobalBtn) deleteRowsGlobalBtn.disabled = rows.length===0;
+          if(deleteColsGlobalBtn) deleteColsGlobalBtn.disabled = cols.length===0;
+          if(deleteBlanksGlobalBtn) deleteBlanksGlobalBtn.disabled = cols.length===0;
+        }
+      }
+    </script>
+  </body>
+  </html>
+
+
+
+

@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    image: notion-python-app:latest
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    env_file:
+      - ../../.env
+    command: python notion_test.py
+
+  dev:
+    build: .
+    image: notion-python-app:latest
+    working_dir: /app
+    volumes:
+      - ./app:/app
+    env_file:
+      - ../../.env
+    # Keep container running for interactive exec; no ports exposed, no conflicts
+    command: ["sh", "-c", "tail -f /dev/null"]

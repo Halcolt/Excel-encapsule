@@ -1,0 +1,148 @@
+@app.route("/render", methods=["POST"])
+def render_view():
+    token = request.form.get("token")
+    selection = request.form.get("selection")
+    if not token or not selection:
+        flash(tr("flash_invalid_selection"))
+        return redirect(url_for("index"))
+
+    if "::" in selection:
+        filename, sheet_name = selection.split("::", 1)
+    else:
+        filename, sheet_name = selection, ""
+
+    dest_dir = get_token_dir(token)
+    path = dest_dir / filename
+    if not path.exists():
+        flash(tr("flash_selected_file_not_found"))
+        return redirect(url_for("index"))
+
+    ext = filename.rsplit(".", 1)[1].lower()
+
+    try:
+        if ext == "csv":
+            df = pd.read_csv(path)
+            table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+            return render_template("view.html", filename=filename, sheet_name=None, table_html=table_html, token=token)
+        else:
+            xls = pd.ExcelFile(path)
+            target_sheet = sheet_name or (xls.sheet_names[0] if xls.sheet_names else None)
+            if not target_sheet:
+                flash(tr("flash_no_sheets_found"))
+                return redirect(url_for("select", token=token))
+            df = xls.parse(target_sheet)
+            table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+            return render_template("view.html", filename=filename, sheet_name=target_sheet, table_html=table_html, token=token)
+    except Exception as e:
+        flash(f"{tr('flash_failed_open_file')}: {e}")
+        return redirect(url_for("select", token=token))
+
+
+@app.route("/render_multi", methods=["POST"])
+def render_multi():
+    token = request.form.get("token")
+    selections = request.form.getlist("selection")
+    if not token or not selections:
+        flash(tr("flash_select_at_least_one_sheet"))
+        return redirect(url_for("index"))
+
+    dest_dir = get_token_dir(token)
+
+    views = []
+    for sel in selections:
+        if "::" in sel:
+            filename, sheet_name = sel.split("::", 1)
+        else:
+            filename, sheet_name = sel, ""
+
+        path = dest_dir / filename
+        if not path.exists():
+            continue
+
+        ext = filename.rsplit(".", 1)[1].lower()
+        try:
+            if ext == "csv":
+                df = pd.read_csv(path)
+                label = f"{filename}"
+                table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+                views.append({
+                    "id": f"v_{len(views)}",
+                    "label": label,
+                    "filename": filename,
+                    "sheet_name": None,
+                    "table_html": table_html,
+                })
+            else:
+                xls = pd.ExcelFile(path)
+                target_sheet = sheet_name or (xls.sheet_names[0] if xls.sheet_names else None)
+                if not target_sheet:
+                    continue
+                df = xls.parse(target_sheet)
+                label = f"{filename} - {target_sheet}"
+                table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+                views.append({
+                    "id": f"v_{len(views)}",
+                    "label": label,
+                    "filename": filename,
+                    "sheet_name": target_sheet,
+                    "table_html": table_html,
+                })
+        except Exception:
+            continue
+
+    if not views:
+        flash(tr("flash_selected_sheets_could_not_be_opened"))
+        return redirect(url_for("select", token=token))
+
+    return render_template("multi_view.html", token=token, views=views)
+
+
+def _sanitize_sheet_name(name: str) -> str:
+    # Remove invalid characters: : \ / ? * [ ]
+    name = re.sub(r"[:\\/\?\*\[\]]", " ", name)
+    name = name.strip() or "Sheet"
+    return name[:31]
+
+
+@app.route("/export", methods=["POST"])
+def export_excel():
+    payload = request.get_json(silent=True) or {}
+    sheets = payload.get("sheets")
+    out_name = payload.get("filename") or "export.xlsx"
+    if not sheets or not isinstance(sheets, list):
+        return {"error": tr("flash_select_at_least_one_sheet")}, 400
+
+    buf = BytesIO()
+    used_names = set()
+
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        for item in sheets:
+            headers = item.get("headers") or []
+            rows = item.get("rows") or []
+            sheet_name = item.get("name") or "Sheet"
+            sheet_name = _sanitize_sheet_name(sheet_name)
+            # Ensure uniqueness
+            base = sheet_name
+            i = 1
+            while sheet_name in used_names:
+                suffix = f"_{i}"
+                sheet_name = _sanitize_sheet_name(base[: (31 - len(suffix))] + suffix)
+                i += 1
+            used_names.add(sheet_name)
+
+            try:
+                df = pd.DataFrame(rows, columns=headers)
+            except Exception:
+                # Fallback: best-effort
+                df = pd.DataFrame(rows)
+                if headers:
+                    df.columns = headers[: len(df.columns)]
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+    buf.seek(0)
+    return send_file(buf, as_attachment=True, download_name=out_name, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000)
+

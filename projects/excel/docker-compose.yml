@@ -1,0 +1,25 @@
+services:
+  excel-viewer:
+    build: .
+    ports:
+      - "8080:8000"
+    environment:
+      - FLASK_ENV=production
+      - PORT=8000
+      - MAX_UPLOAD_MB=16
+      - UPLOAD_TTL_HOURS=24
+    restart: unless-stopped
+
+  dev:
+    build: .
+    command: /bin/sh -lc "watchmedo auto-restart -d /app -p \"*.py;*.html;*.json\" -- gunicorn -w 2 -b 0.0.0.0:$${PORT} main:app"
+    ports:
+      - "8080:8000"
+    environment:
+      - FLASK_ENV=development
+      - PORT=8000
+      - MAX_UPLOAD_MB=16
+      - UPLOAD_TTL_HOURS=24
+    volumes:
+      - ./app:/app
+    restart: unless-stopped

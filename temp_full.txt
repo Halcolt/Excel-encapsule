@@ -1,0 +1,1016 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ t('selected_sheets') }}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+      .layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+      .sidebar { background: #f8f9fc; border: 1px solid #dde3f3; border-radius: 16px; padding: 18px; position: sticky; top: 20px; height: fit-content; box-shadow: 0 10px 26px rgba(13,37,88,0.12); }
+      .sidebar .nav-buttons { display: flex; gap: 10px; margin-bottom: 16px; }
+      .sidebar .menu-tabs { margin-bottom: 16px; background: #e7ecfb; border-radius: 999px; padding: 4px; display: flex; gap: 4px; }
+      .sidebar .menu-tab { flex: 1; border-radius: 999px; border: none; background: transparent; font-weight: 600; color: #5b6a94; cursor: pointer; padding: 6px 0; }
+      .sidebar .menu-tab.active { background: #fff; color: #1d49ad; box-shadow: 0 4px 12px rgba(43,74,166,0.2); }
+      .content-area { overflow: hidden; }
+      .back { padding: 0.5rem 0.8rem; background: #eee; color: #222; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; }
+      .btn { padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; text-decoration: none; }
+      .btn.primary { background: #2266ee; color: #fff; border-color: #1d54c2; }
+      .btn.secondary { background: #f7f7f7; color: #222; border-color: #c6c6c6; }
+      .btn.danger { background: #fbeaea; border-color: #f2b4b4; color: #a00; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 1rem 0; }
+      .tab { padding: 0.5rem 0.8rem; border: 1px solid #ccc; border-bottom: none; border-radius: 6px 6px 0 0; background: #f5f5f5; cursor: pointer; }
+      .tab.active { background: #ffffff; border-bottom: 1px solid white; }
+      .panel { display: none; border: 1px solid #ccc; padding: 1rem; border-radius: 0 6px 6px 6px; }
+      .panel.active { display: block; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; }
+      th { background: #f7f7f7; text-align: left; }
+      .actions { margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+      .nav-buttons { display: flex; gap: 8px; align-items: center; }
+      .toolbar { display: flex; align-items: center; gap: 8px; }
+      .panel .panelbar { display: flex; align-items: center; gap: 12px; color: #555; margin-bottom: 8px; }
+      .note { color: #666; font-size: 0.85rem; }
+      .filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+      .filter-tags { display: flex; gap: 4px; flex-wrap: wrap; }
+      .filter-tag { background: #e9f1ff; color: #225; border: 1px solid #cfe1ff; border-radius: 999px; padding: 2px 6px; font-size: 0.75rem; }
+      .filter-btn { margin-left: 6px; width: 22px; height: 22px; padding: 0; line-height: 20px; text-align: center; font-size: 12px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 4px; cursor: pointer; }
+      .filter-panel { position: absolute; z-index: 1000; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 240px; padding: 8px; display: none; }
+      .filter-panel .search { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-bottom: 6px; }
+      .filter-panel .list { max-height: 200px; overflow: auto; border: 1px solid #eee; border-radius: 4px; padding: 6px; }
+      .filter-panel .actions { margin-top: 8px; display: flex; justify-content: flex-end; gap: 8px; }
+      .row-marker, .col-marker, .corner-marker { background: #f1f4fa; font-weight: 600; text-align: center; }
+      .row-marker { cursor: pointer; width: 40px; }
+      .col-marker { cursor: pointer; }
+      .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid #ddd; border-radius: 6px; }
+      .selected-row td, .selected-row th { background: #fff6da !important; }
+      td.col-selected, th.col-selected { background: #e9f3ff !important; }
+      .selection-status { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; }
+      .selection-status label { display: flex; flex-direction: column; gap: 4px; color: #555; }
+      .selection-status input { width: 100%; padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; background: #fafafa; }
+      .panel-hidden-controls { display: none; }
+      .panel-menu h4 { margin: 0 0 6px; font-size: 0.9rem; color: #405275; }
+      .panel-menu .menu-section { display: flex; flex-direction: column; gap: 8px; }
+      .panel-menu .menu-section + .menu-section { border-top: 1px solid #e3e7f2; padding-top: 10px; }
+      .panel-menu button { width: 100%; }
+      .panel-menu .filter-tags { min-height: 22px; }
+      .color-picker { display: flex; gap: 8px; align-items: center; }
+      .color-picker input[type=\"color\"] { width: 48px; height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
+      .panel-main { flex: 1; min-width: 0; }
+      .panel-menu label.include { font-size: 0.9rem; color: #333; display: flex; gap: 6px; align-items: center; }
+      .sheet-name-input { width: 100%; padding: 6px 8px; border: 1px solid #c9d0e5; border-radius: 8px; box-sizing: border-box; }
+      .sidebar input[type="text"], .sidebar input[type="number"] { width: 100%; padding: 6px 8px; border: 1px solid #cfd4ea; border-radius: 8px; box-sizing: border-box; }
+      .sheet-selector { position: relative; }
+      .sheet-selector button { width: 100%; }
+      .sheet-selector-panel { position: absolute; z-index: 1000; background: #fff; border: 1px solid #cfd5e8; border-radius: 8px; box-shadow: 0 8px 24px rgba(23,30,62,0.12); padding: 10px; top: 105%; left: 0; width: 230px; display: none; max-height: 260px; overflow: auto; }
+      .sheet-selector-panel label { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: #333; padding: 4px 0; }
+      .advanced-pane .sheet-selector { margin-bottom: 10px; }
+      .advanced-pane .btn.primary { margin-top: 10px; width: 100%; }
+      .menu-tabs { display: flex; border: 1px solid #d2d9eb; border-radius: 999px; overflow: hidden; }
+      .menu-tab { flex: 1; text-align: center; padding: 6px 0; font-size: 0.85rem; cursor: pointer; background: #fff; color: #536081; border-right: 1px solid #d2d9eb; }
+      .menu-tab:last-child { border-right: none; }
+      .menu-tab.active { background: #2266ee; color: #fff; font-weight: 600; }
+      .menu-pane { display: none; flex-direction: column; gap: 14px; }
+      .menu-pane.active { display: flex; }
+      .advanced-placeholder { font-size: 0.85rem; color: #6a7085; line-height: 1.4; background: #fff; border: 1px dashed #c7cfe4; padding: 10px; border-radius: 8px; }
+      td.cell-selected { outline: 2px solid #ff9800; outline-offset: -2px; }
+      .lang .switch { display: inline-flex; border: 1px solid #ccc; border-radius: 999px; overflow: hidden; }
+      .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
+      .lang .switch a:last-child { border-right: none; }
+      .lang .switch a.active { background: #2266ee; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="nav-buttons">
+          <a class="back" href="{{ url_for('select', token=token) }}">{{ t('back') }}</a>
+          <a class="btn secondary" href="{{ url_for('index') }}">{{ t('home') }}</a>
+        </div>
+        <div class="menu-tabs">
+          <button class="menu-tab active" type="button" data-pane="general">{{ t('menu_general') }}</button>
+          <button class="menu-tab" type="button" data-pane="advanced">{{ t('menu_advanced') }}</button>
+        </div>
+        <div class="menu-pane general-pane active" data-global-pane="general">
+          <div class="menu-section">
+            <span class="note">{{ t('edit_hint') }}</span>
+          </div>
+          <div class="menu-section">
+            <h4>{{ t('sheet_name_label') }}</h4>
+            <input type="text" class="sheet-name-input" data-role="sheet-name-global" />
+          </div>
+          <div class="menu-section">
+            <h4>{{ t('panel_filters') }}</h4>
+            <div class="filter-tags" data-role="filter-tags-global"></div>
+            <button class="btn secondary" type="button" data-action="clear-filters-global">{{ t('clear_filters') }}</button>
+          </div>
+        <div class="menu-section">
+          <h4>{{ t('panel_selection') }}</h4>
+          <div class="selection-status">
+            <label>{{ t('selected_rows') }}<input type="text" data-role="row-input-global" readonly></label>
+            <label>{{ t('selected_columns') }}<input type="text" data-role="col-input-global" readonly></label>
+          </div>
+        </div>
+        <div class="menu-section">
+          <h4>{{ t('search_replace_heading') }}</h4>
+          <div class="search-control">
+            <input type="text" data-role="search-term-global" placeholder="{{ t('search_placeholder') }}">
+            <input type="text" data-role="replace-term-global" placeholder="{{ t('replace_placeholder') }}">
+            <select data-role="search-scope-global">
+              <option value="all">{{ t('search_scope_all') }}</option>
+              <option value="rows">{{ t('search_scope_rows') }}</option>
+              <option value="cols">{{ t('search_scope_cols') }}</option>
+            </select>
+            <div class="search-buttons">
+              <button class="btn secondary" type="button" data-action="find-next-global">{{ t('find_next') }}</button>
+              <button class="btn secondary" type="button" data-action="replace-global">{{ t('replace') }}</button>
+              <button class="btn secondary" type="button" data-action="replace-all-global">{{ t('replace_all') }}</button>
+            </div>
+            <div class="search-status" data-role="search-status-global"></div>
+          </div>
+        </div>
+        <div class="menu-section">
+          <h4>{{ t('panel_actions') }}</h4>
+          <div class="edit-buttons">
+            <button class="btn danger" type="button" data-action="delete-rows-global" disabled>{{ t('delete_rows') }}</button>
+            <button class="btn danger" type="button" data-action="delete-cols-global" disabled>{{ t('delete_columns') }}</button>
+            <button class="btn danger" type="button" data-action="delete-blanks-global" disabled>{{ t('delete_blank_rows') }}</button>
+          </div>
+        </div>
+          <div class="menu-section">
+            <h4>{{ t('color_picker_label') }}</h4>
+            <div class="color-picker">
+              <input type="color" data-role="color-input-global" value="#fff8b1">
+              <button class="btn secondary" type="button" data-action="apply-color-global">{{ t('apply_color') }}</button>
+            </div>
+          </div>
+        </div>
+        <div class="menu-pane advanced-pane" data-global-pane="advanced">
+          <div class="menu-section">
+            <h4>{{ t('advanced_export_heading') }}</h4>
+            <div class="sheet-selector">
+              <button class="btn secondary" type="button" data-role="sheet-select-toggle">{{ t('advanced_select_sheets') }} ?</button>
+              <div class="sheet-selector-panel" data-role="sheet-select-panel"></div>
+            </div>
+            <button class="btn primary" type="button" data-action="export-selected">{{ t('export_selected') }}</button>
+            <p class="note">{{ t('advanced_export_hint') }}</p>
+          </div>
+          <div class="menu-section">
+            <div class="advanced-placeholder">{{ t('advanced_placeholder') }}</div>
+          </div>
+        </div>
+      </aside>
+      <div class="content-area">
+        <div class="toolbar" style="justify-content: flex-end;">
+          <div class="lang">
+            <div class="switch">
+              {% set next_url = url_for('select', token=token) %}
+              <a href="{{ url_for('set_lang_route', lang='en', next=next_url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
+              <a href="{{ url_for('set_lang_route', lang='vi', next=next_url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+            </div>
+          </div>
+        </div>
+        <h1>{{ t('selected_sheets') }}</h1>
+
+        <div class="tabs" id="tabs">
+          {% for v in views %}
+            <button class="tab{% if loop.first %} active{% endif %}" data-target="{{ v.id }}">{{ v.label }}</button>
+          {% endfor %}
+        </div>
+
+        {% for v in views %}
+          <div class="panel{% if loop.first %} active{% endif %}" id="{{ v.id }}" data-filename="{{ v.filename }}" data-sheet="{{ v.sheet_name or '' }}" data-label="{{ v.label }}">
+            <h2 class="panel-title" style="margin-top:0">{{ v.label }}</h2>
+            <div class="table-wrap">{{ v.table_html|safe }}</div>
+            <div class="panel-hidden-controls">
+              <aside class="panel-menu">
+                <div class="menu-pane general-pane active">
+                  <div class="menu-section">
+                    <span class="note">{{ t('edit_hint') }}</span>
+                  </div>
+                  <div class="menu-section">
+                    <h4>{{ t('sheet_name_label') }}</h4>
+                    <input type="text" class="sheet-name-input" data-role="sheet-name" value="{{ v.sheet_name or v.label }}" />
+                  </div>
+                  <div class="menu-section">
+                    <h4>{{ t('panel_filters') }}</h4>
+                    <div class="filter-tags" data-role="filter-tags"></div>
+                    <button class="btn secondary" type="button" data-action="clear-filters">{{ t('clear_filters') }}</button>
+                  </div>
+                  <div class="menu-section">
+                    <h4>{{ t('panel_selection') }}</h4>
+                    <div class="selection-status">
+                      <label>{{ t('selected_rows') }}<input type="text" data-role="row-input" readonly></label>
+                      <label>{{ t('selected_columns') }}<input type="text" data-role="col-input" readonly></label>
+                    </div>
+                  </div>
+                  <div class="menu-section">
+                    <h4>{{ t('panel_actions') }}</h4>
+                    <button class="btn danger" type="button" data-action="delete-rows" disabled>{{ t('delete_rows') }}</button>
+                    <button class="btn danger" type="button" data-action="delete-cols" disabled>{{ t('delete_columns') }}</button>
+                    <button class="btn danger" type="button" data-action="delete-blanks" disabled>{{ t('delete_blank_rows') }}</button>
+                  </div>
+                  <div class="menu-section">
+                    <h4>{{ t('color_picker_label') }}</h4>
+                    <div class="color-picker">
+                      <input type="color" data-role="color-input" value="#fff8b1">
+                      <button class="btn secondary" type="button" data-action="apply-color">{{ t('apply_color') }}</button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <script>
+      const tabs = document.querySelectorAll('.tab');
+      const panels = document.querySelectorAll('.panel');
+      const sheetSelection = new Set(Array.from(panels).map(panel => panel.id));
+      let activePanel = document.querySelector('.panel.active');
+
+      const sheetNameGlobal = document.querySelector('[data-role="sheet-name-global"]');
+      const filterTagsGlobal = document.querySelector('[data-role="filter-tags-global"]');
+      const rowInputGlobal = document.querySelector('[data-role="row-input-global"]');
+      const colInputGlobal = document.querySelector('[data-role="col-input-global"]');
+      const clearFiltersGlobalBtn = document.querySelector('[data-action="clear-filters-global"]');
+      const deleteRowsGlobalBtn = document.querySelector('[data-action="delete-rows-global"]');
+      const deleteColsGlobalBtn = document.querySelector('[data-action="delete-cols-global"]');
+      const deleteBlanksGlobalBtn = document.querySelector('[data-action="delete-blanks-global"]');
+      const colorInputGlobal = document.querySelector('[data-role="color-input-global"]');
+      const applyColorGlobalBtn = document.querySelector('[data-action="apply-color-global"]');
+      const sheetSelectToggle = document.querySelector('[data-role="sheet-select-toggle"]');
+      const sheetSelectPanel = document.querySelector('[data-role="sheet-select-panel"]');
+      const searchTermGlobal = document.querySelector('[data-role="search-term-global"]');
+      const replaceTermGlobal = document.querySelector('[data-role="replace-term-global"]');
+      const searchScopeGlobal = document.querySelector('[data-role="search-scope-global"]');
+      const searchStatusGlobal = document.querySelector('[data-role="search-status-global"]');
+      const findNextGlobalBtn = document.querySelector('[data-action="find-next-global"]');
+      const replaceGlobalBtn = document.querySelector('[data-action="replace-global"]');
+      const replaceAllGlobalBtn = document.querySelector('[data-action="replace-all-global"]');
+
+      document.querySelectorAll('[data-action="export-selected"]').forEach(btn=>{
+        btn.addEventListener('click', exportSelected);
+      });
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const target = tab.getAttribute('data-target');
+          tabs.forEach(t => t.classList.remove('active'));
+          panels.forEach(p => {
+            if(p.classList.contains('active')) resetSearchState(p, true);
+            p.classList.remove('active');
+          });
+          tab.classList.add('active');
+          const panel = document.getElementById(target);
+          panel.classList.add('active');
+          activePanel = panel;
+          syncGlobalControls();
+        });
+      });
+
+      document.querySelectorAll('.panel table').forEach(tbl => {
+        tbl.querySelectorAll('tbody td').forEach(td => td.contentEditable = 'true');
+      });
+
+      sheetNameGlobal?.addEventListener('input',()=>{
+        if(!activePanel) return;
+        const local = activePanel.querySelector('[data-role="sheet-name"]');
+        if(local){
+          local.value = sheetNameGlobal.value;
+          local.dispatchEvent(new Event('input'));
+        }
+      });
+      clearFiltersGlobalBtn?.addEventListener('click',()=>{
+        activePanel?.querySelector('[data-action="clear-filters"]')?.click();
+      });
+      deleteRowsGlobalBtn?.addEventListener('click',()=>{
+        activePanel?.querySelector('[data-action="delete-rows"]')?.click();
+      });
+      deleteColsGlobalBtn?.addEventListener('click',()=>{
+        activePanel?.querySelector('[data-action="delete-cols"]')?.click();
+      });
+      deleteBlanksGlobalBtn?.addEventListener('click',()=>{
+        activePanel?.querySelector('[data-action="delete-blanks"]')?.click();
+      });
+      colorInputGlobal?.addEventListener('input',()=>{
+        const local = activePanel?.querySelector('[data-role="color-input"]');
+        if(local) local.value = colorInputGlobal.value;
+      });
+      applyColorGlobalBtn?.addEventListener('click',()=>{
+        activePanel?.querySelector('[data-action="apply-color"]')?.click();
+      });
+      findNextGlobalBtn?.addEventListener('click', handleFindNext);
+      replaceGlobalBtn?.addEventListener('click', handleReplace);
+      replaceAllGlobalBtn?.addEventListener('click', handleReplaceAll);
+      searchTermGlobal?.addEventListener('input',()=>resetSearchState(activePanel));
+      searchScopeGlobal?.addEventListener('change',()=>resetSearchState(activePanel));
+
+      initPanels();
+      setupMenuTabs();
+      setupSheetSelectors();
+      syncGlobalControls();
+
+      function syncGlobalControls(){
+        if(!activePanel) return;
+        const sheetInput = activePanel.querySelector('[data-role="sheet-name"]');
+        if(sheetNameGlobal && sheetInput){
+          sheetNameGlobal.value = sheetInput.value;
+        }
+        const colorLocal = activePanel.querySelector('[data-role="color-input"]');
+        if(colorInputGlobal && colorLocal){
+          colorInputGlobal.value = colorLocal.value || '#fff8b1';
+        }
+        syncGlobalFilters();
+        syncGlobalSelection();
+        updateGlobalActionButtons();
+        resetSearchState(activePanel, true);
+      }
+
+      function syncGlobalFilters(){
+        if(!filterTagsGlobal) return;
+        const local = activePanel?.querySelector('[data-role="filter-tags"]');
+        filterTagsGlobal.innerHTML = local ? local.innerHTML : '';
+      }
+
+      function syncGlobalSelection(){
+        if(!activePanel) return;
+        const rowInput = activePanel.querySelector('[data-role="row-input"]');
+        const colInput = activePanel.querySelector('[data-role="col-input"]');
+        if(rowInputGlobal) rowInputGlobal.value = rowInput ? rowInput.value : '';
+        if(colInputGlobal) colInputGlobal.value = colInput ? colInput.value : '';
+      }
+
+      function updateGlobalActionButtons(){
+        if(!activePanel) {
+          deleteRowsGlobalBtn?.setAttribute('disabled','disabled');
+          deleteColsGlobalBtn?.setAttribute('disabled','disabled');
+          deleteBlanksGlobalBtn?.setAttribute('disabled','disabled');
+          return;
+        }
+        const rowsBtn = activePanel.querySelector('[data-action="delete-rows"]');
+        const colsBtn = activePanel.querySelector('[data-action="delete-cols"]');
+        const blanksBtn = activePanel.querySelector('[data-action="delete-blanks"]');
+        if(deleteRowsGlobalBtn) deleteRowsGlobalBtn.disabled = rowsBtn ? rowsBtn.disabled : true;
+        if(deleteColsGlobalBtn) deleteColsGlobalBtn.disabled = colsBtn ? colsBtn.disabled : true;
+        if(deleteBlanksGlobalBtn) deleteBlanksGlobalBtn.disabled = blanksBtn ? blanksBtn.disabled : true;
+      }
+
+      function updateSearchStatus(message){
+        if(searchStatusGlobal) searchStatusGlobal.textContent = message || '';
+      }
+
+      function resetSearchState(panel, silent){
+        if(panel && panel._searchState){
+          if(panel._searchState.highlight){
+            panel._searchState.highlight.classList.remove('search-hit');
+          }
+          panel._searchState = null;
+        }
+        if(!silent) updateSearchStatus('');
+      }
+
+      function handleFindNext(){
+        if(!activePanel) return;
+        const term = (searchTermGlobal?.value || '').trim();
+        if(!term){ updateSearchStatus('{{ t('search_need_term') }}'); return; }
+        const scope = searchScopeGlobal?.value || 'all';
+        const state = prepareSearchState(activePanel, term, scope);
+        if(!state) return;
+        const idx = findNextMatch(state, term);
+        if(idx === -1){
+          updateSearchStatus('{{ t('search_not_found') }}');
+          highlightSearchCell(activePanel, null);
+        }else{
+          updateSearchStatus(`(${idx+1}/${state.cells.length})`);
+        }
+      }
+
+      function handleReplace(){
+        if(!activePanel) return;
+        const term = (searchTermGlobal?.value || '').trim();
+        if(!term){ updateSearchStatus('{{ t('search_need_term') }}'); return; }
+        const scope = searchScopeGlobal?.value || 'all';
+        const replacement = replaceTermGlobal?.value || '';
+        let state = prepareSearchState(activePanel, term, scope);
+        if(!state) return;
+        if(state.index === undefined || state.index < 0){
+          if(findNextMatch(state, term) === -1){
+            updateSearchStatus('{{ t('search_not_found') }}');
+            return;
+          }
+        }
+        const cell = state.cells[state.index]?.cell;
+        if(!cell || !cellMatches(cell, term)){
+          if(findNextMatch(state, term) === -1){
+            updateSearchStatus('{{ t('search_not_found') }}');
+            return;
+          }
+        }
+        const regex = new RegExp(escapeRegExp(term), 'i');
+        cell.innerText = cell.innerText.replace(regex, replacement);
+        updateSearchStatus('{{ t('replace_done') }}');
+        state.cells = null;
+      }
+
+      function handleReplaceAll(){
+        if(!activePanel) return;
+        const term = (searchTermGlobal?.value || '').trim();
+        if(!term){ updateSearchStatus('{{ t('search_need_term') }}'); return; }
+        const scope = searchScopeGlobal?.value || 'all';
+        const replacement = replaceTermGlobal?.value || '';
+        const {cells, reason} = collectSearchCells(activePanel, scope);
+        if(!cells || !cells.length){
+          if(reason==='rows') updateSearchStatus('{{ t('search_need_rows') }}');
+          else if(reason==='cols') updateSearchStatus('{{ t('search_need_cols') }}');
+          else updateSearchStatus('{{ t('search_not_found') }}');
+          return;
+        }
+        const regex = new RegExp(escapeRegExp(term), 'gi');
+        let count=0;
+        cells.forEach(({cell})=>{
+          if(regex.test(cell.innerText)){
+            cell.innerText = cell.innerText.replace(regex, replacement);
+            regex.lastIndex = 0;
+            count++;
+          }
+        });
+        updateSearchStatus(count ? '{{ t('replace_all_done') }}'.replace('%d', count) : '{{ t('search_not_found') }}');
+        resetSearchState(activePanel, true);
+      }
+
+      function prepareSearchState(panel, term, scope){
+        if(!panel) return null;
+        if(!panel._searchState) panel._searchState = {index:-1};
+        const state = panel._searchState;
+        if(state.term !== term || state.scope !== scope){
+          highlightSearchCell(panel, null);
+          state.term = term;
+          state.scope = scope;
+          state.index = -1;
+          state.cells = null;
+        }
+        if(!state.term) return null;
+        if(!state.cells){
+          const data = collectSearchCells(panel, scope);
+          if(!data.cells || !data.cells.length){
+            if(data.reason==='rows') updateSearchStatus('{{ t('search_need_rows') }}');
+            else if(data.reason==='cols') updateSearchStatus('{{ t('search_need_cols') }}');
+            else updateSearchStatus('{{ t('search_not_found') }}');
+            return null;
+          }
+          state.cells = data.cells;
+        }
+        return state;
+      }
+
+      function collectSearchCells(panel, scope){
+        const table = panel.querySelector('table');
+        if(!table || !table.tBodies.length) return {cells:[]};
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        let rowIdxs = rows.map((_,i)=>i);
+        if(scope==='rows'){
+          if(!table._selectedRows || table._selectedRows.size===0) return {cells:[], reason:'rows'};
+          rowIdxs = Array.from(table._selectedRows);
+        }
+        let colIdxs = [];
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        const colCount = header ? header.cells.length - offset : 0;
+        colIdxs = Array.from({length: colCount}, (_,i)=>i);
+        if(scope==='cols'){
+          if(!table._selectedCols || table._selectedCols.size===0) return {cells:[], reason:'cols'};
+          colIdxs = Array.from(table._selectedCols);
+        }
+        const cells=[];
+        rowIdxs.forEach(rIdx=>{
+          const row = rows[rIdx];
+          if(!row) return;
+          colIdxs.forEach(cIdx=>{
+            const cell=row.cells[cIdx+offset];
+            if(cell) cells.push({cell, row:rIdx, col:cIdx});
+          });
+        });
+        return {cells};
+      }
+
+      function findNextMatch(state, term){
+        if(!state || !state.cells || !state.cells.length) return -1;
+        const termLower = term.toLowerCase();
+        const length = state.cells.length;
+        for(let i=1;i<=length;i++){
+          const idx = (state.index + i) % length;
+          if(cellMatches(state.cells[idx].cell, termLower)){
+            state.index = idx;
+            highlightSearchCell(activePanel, state.cells[idx].cell);
+            return idx;
+          }
+        }
+        return -1;
+      }
+
+      function highlightSearchCell(panel, cell){
+        if(panel && panel._searchState && panel._searchState.highlight){
+          panel._searchState.highlight.classList.remove('search-hit');
+        }
+        if(panel){
+          if(!panel._searchState) panel._searchState = {};
+          panel._searchState.highlight = cell || null;
+        }
+        if(cell) cell.classList.add('search-hit');
+      }
+
+      function cellMatches(cell, termLower){
+        if(!cell) return false;
+        return cell.innerText.toLowerCase().includes(termLower);
+      }
+
+      function escapeRegExp(string){
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      function exportSelected() {
+        const selected = [];
+        document.querySelectorAll('.panel').forEach(panel => {
+          if (!sheetSelection.has(panel.id)) return;
+          const t = extractTable(panel);
+          if (t) selected.push(t);
+        });
+        if (selected.length === 0) {
+          alert('{{ t('alert_select_at_least_one_sheet') }}');
+          return;
+        }
+        const payload = { filename: 'export.xlsx', sheets: selected };
+        fetch('{{ url_for('export_excel') }}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        }).then(resp => {
+          if (!resp.ok) throw new Error('Export failed');
+          return resp.blob();
+        }).then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'export.xlsx';
+          document.body.appendChild(a);
+          a.click();
+          URL.revokeObjectURL(url);
+          a.remove();
+        }).catch(()=> alert('Export failed'));
+      }
+
+      function extractTable(panel) {
+        const tbl = panel.querySelector('table');
+        if (!tbl) return null;
+        const dataHeader = tbl.tHead ? tbl.tHead.querySelector('tr[data-role=\"data-header\"]') : null;
+        const headers = dataHeader ? Array.from(dataHeader.querySelectorAll('th:not(.corner-marker)')).map(th => th.innerText.trim()) : [];
+        const rows = Array.from(tbl.querySelectorAll('tbody tr')).map(tr => Array.from(tr.querySelectorAll('td')).map(td => td.innerText));
+        const fname = panel.getAttribute('data-filename') || '';
+        const sheet = panel.getAttribute('data-sheet') || '';
+        const nameInput = panel.querySelector('[data-role="sheet-name"]');
+        const custom = nameInput ? nameInput.value.trim() : '';
+        const label = panel.getAttribute('data-label') || '';
+        const base = (custom || sheet || label || fname.replace(/\.[^/.]+$/, '') || 'Sheet').trim();
+        return { headers, rows, name: base };
+      }
+
+      function initPanels(){
+        document.querySelectorAll('.panel').forEach(panel => {
+          const table = panel.querySelector('table');
+          if(!table || !table.tHead) return;
+          initializePanel(panel, table);
+          const deleteRowsBtn = panel.querySelector('[data-action="delete-rows"]');
+          const deleteColsBtn = panel.querySelector('[data-action="delete-cols"]');
+          const deleteBlankBtn = panel.querySelector('[data-action="delete-blanks"]');
+          const applyColorBtn = panel.querySelector('[data-action="apply-color"]');
+          deleteRowsBtn?.addEventListener('click',()=>handleDeleteRows(panel, table));
+          deleteColsBtn?.addEventListener('click',()=>handleDeleteCols(panel, table));
+          deleteBlankBtn?.addEventListener('click',()=>handleDeleteBlankRows(panel, table));
+          applyColorBtn?.addEventListener('click',()=>applyColorToSelection(panel, table));
+          setupSheetNameBinding(panel);
+          const menuToggle = panel.querySelector('[data-role="menu-toggle"]');
+          menuToggle?.addEventListener('click',()=>{
+            panel.classList.toggle('menu-hidden');
+          });
+        });
+      }
+
+      function setupMenuTabs(){
+        const menu=document.querySelector('.sidebar');
+        if(!menu) return;
+        const tabs=menu.querySelectorAll('.menu-tab');
+        const panes=menu.querySelectorAll('.menu-pane');
+        tabs.forEach(tab=>{
+          tab.addEventListener('click', ()=>{
+            tabs.forEach(t=>t.classList.remove('active'));
+            tab.classList.add('active');
+            panes.forEach(p=>p.classList.remove('active'));
+            const paneClass = tab.dataset.pane ? `.${tab.dataset.pane}-pane` : null;
+            if(paneClass){
+              menu.querySelector(paneClass)?.classList.add('active');
+            }
+          });
+        });
+      }
+
+      let sheetSelectorDocListenerBound = false;
+      function setupSheetSelectors(){
+        if(!sheetSelectToggle || !sheetSelectPanel) return;
+        populateSheetSelectorPanel();
+        sheetSelectToggle.addEventListener('click',(ev)=>{
+          ev.stopPropagation();
+          const open = sheetSelectPanel.style.display==='block';
+          sheetSelectPanel.style.display = open ? 'none' : 'block';
+        });
+        sheetSelectPanel.addEventListener('click',(ev)=>ev.stopPropagation());
+        if(!sheetSelectorDocListenerBound){
+          document.addEventListener('click',()=>{ sheetSelectPanel.style.display='none'; });
+          sheetSelectorDocListenerBound = true;
+        }
+      }
+
+      function populateSheetSelectorPanel(){
+        if(!sheetSelectPanel) return;
+        sheetSelectPanel.innerHTML='';
+        panels.forEach(panel=>{
+          const label=document.createElement('label');
+          const box=document.createElement('input');
+          box.type='checkbox';
+          box.className='export-sheet';
+          box.dataset.sheet=panel.id;
+          box.checked=sheetSelection.has(panel.id);
+          box.addEventListener('change',()=>{
+            if(box.checked) sheetSelection.add(panel.id); else sheetSelection.delete(panel.id);
+          });
+          label.appendChild(box);
+          label.appendChild(document.createTextNode(' '+(panel.dataset.label || panel.id)));
+          sheetSelectPanel.appendChild(label);
+        });
+      }
+
+      function setupSheetNameBinding(panel){
+        const input=panel.querySelector('[data-role="sheet-name"]');
+        const title=panel.querySelector('.panel-title');
+        if(!input) return;
+        input.addEventListener('input',()=>{
+          if(title){
+            const value=input.value.trim();
+            title.textContent = value || panel.getAttribute('data-label') || title.textContent;
+          }
+          if(activePanel === panel && sheetNameGlobal){
+            sheetNameGlobal.value = input.value;
+          }
+        });
+      }
+
+
+      function initializePanel(panel, table){
+        const summary = panel.querySelector('[data-role="filter-tags"]');
+        const rowInput = panel.querySelector('[data-role="row-input"]');
+        const colInput = panel.querySelector('[data-role="col-input"]');
+        const deleteRowsBtn = panel.querySelector('[data-action="delete-rows"]');
+        const deleteColsBtn = panel.querySelector('[data-action="delete-cols"]');
+        const deleteBlankBtn = panel.querySelector('[data-action="delete-blanks"]');
+        stripEnhancements(table);
+        addRowColMarkers(table);
+        setupFilters(table, summary);
+        attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+        attachCellSelection(table);
+        const clearBtn = panel.querySelector('[data-action="clear-filters"]');
+        if(clearBtn && !clearBtn.dataset.bound){
+          clearBtn.addEventListener('click',()=>clearAllFilters(table, summary));
+          clearBtn.dataset.bound='1';
+        }
+        updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+        refreshRowHighlights(table);
+        refreshColHighlights(table);
+        refreshCellHighlights(table);
+      }
+
+      function handleDeleteRows(panel, table){
+        if(!table._selectedRows || table._selectedRows.size===0) return;
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        Array.from(table._selectedRows).sort((a,b)=>b-a).forEach(idx=>{
+          rows[idx]?.remove();
+        });
+        initializePanel(panel, table);
+      }
+
+      function handleDeleteCols(panel, table){
+        if(!table._selectedCols || table._selectedCols.size===0) return;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        Array.from(table._selectedCols).sort((a,b)=>b-a).forEach(colIdx=>{
+          header?.cells[colIdx+offset]?.remove();
+          rows.forEach(row=>row.cells[colIdx+offset]?.remove());
+        });
+        initializePanel(panel, table);
+      }
+
+      function handleDeleteBlankRows(panel, table){
+        if(!table._selectedCols || table._selectedCols.size===0) return;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const targets=Array.from(table._selectedCols);
+        let removed=false;
+        rows.forEach(row=>{
+          const shouldRemove=targets.every(colIdx=>{
+            const cell=row.cells[colIdx+offset];
+            const text=(cell?cell.innerText:'').trim().toLowerCase();
+            return text==='' || text==='null' || text==='na' || text==='nan';
+          });
+          if(shouldRemove){
+            row.remove();
+            removed=true;
+          }
+        });
+        if(removed) initializePanel(panel, table);
+      }
+
+      function applyColorToSelection(panel, table){
+        const colorInput=panel.querySelector('[data-role=\"color-input\"]');
+        if(!colorInput) return;
+        const color=colorInput.value;
+        if(!color) return;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const colorRows = table._selectedRows && table._selectedRows.size>0;
+        const colorCols = table._selectedCols && table._selectedCols.size>0;
+        const colorCells = table._selectedCells && table._selectedCells.size>0;
+        if(!colorRows && !colorCols && !colorCells) return;
+        if(colorRows){
+          table._selectedRows.forEach(idx=>{
+            const row=rows[idx];
+            if(!row) return;
+            for(let c=offset;c<row.cells.length;c++){
+              const cell=row.cells[c];
+              if(cell) cell.style.backgroundColor=color;
+            }
+          });
+        }
+        if(colorCols){
+          table._selectedCols.forEach(colIdx=>{
+            rows.forEach(row=>{
+              const cell=row.cells[colIdx+offset];
+              if(cell) cell.style.backgroundColor=color;
+            });
+          });
+        }
+        if(colorCells){
+          table._selectedCells.forEach(key=>{
+            const cell=getCellByKey(table, key);
+            if(cell) cell.style.backgroundColor=color;
+          });
+        }
+      }
+
+      // Shared helper functions (same as single view)
+      function columnLabel(idx){ let label=''; while(idx>=0){ label = String.fromCharCode(65 + (idx % 26)) + label; idx = Math.floor(idx / 26) - 1; } return label; }
+      function addRowColMarkers(table){
+        const dataHeader=table.tHead.rows[0];
+        dataHeader.dataset.role='data-header';
+        const markerRow=table.tHead.insertRow(0);
+        markerRow.dataset.role='marker-row';
+        const corner=document.createElement('th'); corner.className='corner-marker'; markerRow.appendChild(corner);
+        const headerCorner=document.createElement('th'); headerCorner.className='corner-marker'; dataHeader.insertBefore(headerCorner, dataHeader.firstChild);
+        const colCount=dataHeader.cells.length-1;
+        for(let c=0;c<colCount;c++){
+          const th=document.createElement('th'); th.className='col-marker'; th.dataset.colIndex=c; th.textContent=columnLabel(c); markerRow.appendChild(th);
+        }
+        Array.from(table.tBodies[0].rows).forEach((row, idx)=>{
+          const marker=document.createElement('th'); marker.className='row-marker'; marker.dataset.rowIndex=idx; marker.textContent=idx+1; row.insertBefore(marker, row.firstChild);
+        });
+        table.dataset.markerOffset='1';
+      }
+      function stripEnhancements(table){
+        if(!table.tHead) return;
+        const thead=table.tHead;
+        const markerRow=Array.from(thead.rows).find(r=>r.dataset.role==='marker-row');
+        if(markerRow) markerRow.remove();
+        const header=thead.querySelector('tr[data-role="data-header"]') || thead.rows[0];
+        if(header && !header.dataset.role) header.dataset.role='data-header';
+        if(header){
+          header.querySelectorAll('.filter-btn').forEach(btn=>btn.remove());
+          const firstCell=header.cells[0];
+          if(firstCell && firstCell.classList.contains('corner-marker')) header.deleteCell(0);
+        }
+        const bodyRows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        bodyRows.forEach(row=>{
+          row.classList.remove('selected-row');
+          row.querySelectorAll('td').forEach(cell=>cell.classList.remove('cell-selected'));
+          const first=row.cells[0];
+          if(first && first.classList.contains('row-marker')) row.deleteCell(0);
+        });
+        delete table.dataset.markerOffset;
+        table._selectedRows=new Set();
+        table._selectedCols=new Set();
+        table._selectedCells=new Set();
+        delete table.dataset.cellSelectionBound;
+      }
+      function collectUnique(table){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        const colCount=header? header.cells.length - offset : 0;
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const sets=Array.from({length:colCount},()=>new Set());
+        rows.forEach(r=>{ for(let c=0;c<colCount;c++){ const cell=r.cells[c+offset]; const text=(cell?cell.innerText:''); sets[c].add(text); } });
+        return sets.map(s=>Array.from(s).sort((a,b)=>a.localeCompare(b)));
+      }
+      function setupFilters(table, summaryEl){
+        const header=table.tHead.querySelector('tr[data-role="data-header"]');
+        if(!header) return;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const unique=collectUnique(table);
+        const state=unique.map(()=>[]);
+        table._filters=state;
+        for(let c=offset;c<header.cells.length;c++){
+          const th=header.cells[c];
+          const btn=document.createElement('button'); btn.type='button'; btn.className='filter-btn'; btn.title='{{ t('filter') }}'; btn.textContent='\u25BE';
+          btn.dataset.colIndex=c-offset;
+          btn.addEventListener('click',(e)=>openFilterPanel(e.currentTarget, table, parseInt(e.currentTarget.dataset.colIndex,10), summaryEl));
+          th.appendChild(btn);
+        }
+        renderFilterTags(summaryEl, state);
+      }
+      function renderFilterTags(summaryEl, filters){
+        summaryEl.innerHTML='';
+        filters.forEach((vals, idx)=>{
+          if(vals && vals.length){
+            const pill=document.createElement('span'); pill.className='filter-tag'; pill.textContent=`${columnLabel(idx)} (${vals.length})`;
+            summaryEl.appendChild(pill);
+          }
+        });
+        if(filterTagsGlobal && activePanel && summaryEl.closest('.panel') === activePanel){
+          filterTagsGlobal.innerHTML = summaryEl.innerHTML;
+        }
+      }
+      function openFilterPanel(anchor, table, col, summaryEl){
+        closeFilterPanel();
+        const panel=document.createElement('div'); panel.className='filter-panel'; panel.id='filterPanel';
+        const rect=anchor.getBoundingClientRect();
+        panel.style.left=(window.scrollX+rect.left)+'px'; panel.style.top=(window.scrollY+rect.bottom+4)+'px';
+        const values=collectUnique(table)[col];
+        const search=document.createElement('input'); search.className='search'; search.placeholder='{{ t('filter_search') }}';
+        const list=document.createElement('div'); list.className='list';
+        const controls=document.createElement('div'); controls.className='actions';
+        const applyBtn=document.createElement('button'); applyBtn.className='btn primary'; applyBtn.textContent='{{ t('filter_apply') }}';
+        const clearBtn=document.createElement('button'); clearBtn.className='btn secondary'; clearBtn.textContent='{{ t('filter_clear') }}';
+        const selected=new Set(table._filters[col]||[]);
+        function renderList(){
+          list.innerHTML='';
+          const q=(search.value||'').toLowerCase();
+          values.filter(v=>v.toLowerCase().includes(q)).forEach(v=>{
+            const label=document.createElement('label'); label.style.display='block';
+            const cb=document.createElement('input'); cb.type='checkbox'; cb.value=v; cb.checked=selected.has(v);
+            label.appendChild(cb); label.appendChild(document.createTextNode(' '+(v===''?'{{ t('filter_blank') }}':v)));
+            cb.addEventListener('change',()=>{ if(cb.checked) selected.add(v); else selected.delete(v); });
+            list.appendChild(label);
+          });
+        }
+        renderList();
+        search.addEventListener('input',renderList);
+        applyBtn.addEventListener('click',()=>{ table._filters[col]=Array.from(selected); applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+        clearBtn.addEventListener('click',()=>{ selected.clear(); table._filters[col]=[]; applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+        panel.appendChild(search); panel.appendChild(list); controls.appendChild(clearBtn); controls.appendChild(applyBtn); panel.appendChild(controls);
+        document.body.appendChild(panel); panel.style.display='block';
+        setTimeout(()=>{ document.addEventListener('click',outsideClose,{ once:true }); },0);
+        function outsideClose(ev){ if(!panel.contains(ev.target) && ev.target!==anchor){ closeFilterPanel(); } }
+      }
+      function closeFilterPanel(){ const p=document.getElementById('filterPanel'); if(p) p.remove(); }
+      function clearAllFilters(table, summaryEl){ if(!table._filters) return; table._filters=table._filters.map(()=>[]); applyFilters(table); renderFilterTags(summaryEl, table._filters); }
+      function applyFilters(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const filters=table._filters || [];
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        rows.forEach(row=>{
+          let show=true;
+          for(let c=0;c<filters.length;c++){
+            const chosen=filters[c]; if(!chosen || chosen.length===0) continue;
+            const text=(row.cells[c+offset]?row.cells[c+offset].innerText:'');
+            if(!chosen.includes(text)){ show=false; break; }
+          }
+          row.style.display=show?'':'none';
+        });
+      }
+      function attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn){
+        table._selectedRows = new Set();
+        table._selectedCols = new Set();
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach((row, idx)=>{
+          const marker=row.querySelector('.row-marker');
+          marker?.addEventListener('click',(ev)=>{
+            handleToggle(ev, table._selectedRows, idx);
+            refreshRowHighlights(table);
+            updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+          });
+        });
+        table.querySelectorAll('.col-marker').forEach(marker=>{
+          const colIdx=parseInt(marker.dataset.colIndex,10);
+          marker.addEventListener('click',(ev)=>{
+            handleToggle(ev, table._selectedCols, colIdx);
+            refreshColHighlights(table);
+            updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+          });
+        });
+        function handleToggle(ev, set, value){
+          const additive = ev.ctrlKey || ev.metaKey;
+          if(!additive){ set.clear(); }
+          if(additive && set.has(value)) set.delete(value); else set.add(value);
+        }
+      }
+      function refreshRowHighlights(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach((row, idx)=>{
+          if(table._selectedRows && table._selectedRows.has(idx)) row.classList.add('selected-row'); else row.classList.remove('selected-row');
+        });
+      }
+      function refreshColHighlights(table){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const markers=table.querySelectorAll('.col-marker');
+        markers.forEach(marker=>{
+          const idx=parseInt(marker.dataset.colIndex,10);
+          if(table._selectedCols && table._selectedCols.has(idx)) marker.classList.add('col-selected'); else marker.classList.remove('col-selected');
+        });
+        rows.forEach(row=>{
+          for(let c=offset;c<row.cells.length;c++){
+            row.cells[c].classList.remove('col-selected');
+          }
+        });
+        if(table._selectedCols){
+          table._selectedCols.forEach(colIdx=>{
+            rows.forEach(row=>{
+              const cell=row.cells[colIdx+offset]; if(cell) cell.classList.add('col-selected');
+            });
+          });
+        }
+      }
+      function attachCellSelection(table){
+        table._selectedCells = new Set();
+        if(table.dataset.cellSelectionBound==='1') return;
+        table.addEventListener('click',(ev)=>{
+          const cell=ev.target.closest('td');
+          if(!cell || !table.contains(cell)) return;
+          const row=cell.closest('tr');
+          if(!row || row.parentElement?.tagName !== 'TBODY') return;
+          const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+          const rowIdx=rows.indexOf(row);
+          if(rowIdx<0) return;
+          const offset=parseInt(table.dataset.markerOffset || '0',10);
+          const colIdx=Array.from(row.cells).indexOf(cell)-offset;
+          if(colIdx<0) return;
+          const key=`${rowIdx}:${colIdx}`;
+          const additive = ev.ctrlKey || ev.metaKey;
+          if(!additive) table._selectedCells.clear();
+          if(additive && table._selectedCells.has(key)) table._selectedCells.delete(key);
+          else table._selectedCells.add(key);
+          refreshCellHighlights(table);
+        });
+        table.dataset.cellSelectionBound='1';
+      }
+      function refreshCellHighlights(table){
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach(row=>{
+          row.querySelectorAll('td').forEach(cell=>cell.classList.remove('cell-selected'));
+        });
+        if(!table._selectedCells) return;
+        table._selectedCells.forEach(key=>{
+          const cell=getCellByKey(table, key);
+          if(cell) cell.classList.add('cell-selected');
+        });
+      }
+      function getCellByKey(table, key){
+        const [rowIdx, colIdx]=key.split(':').map(Number);
+        if(Number.isNaN(rowIdx) || Number.isNaN(colIdx)) return null;
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const row=rows[rowIdx];
+        if(!row) return null;
+        return row.cells[colIdx+offset] || null;
+      }
+      function updateSelectionInputs(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn){
+        const rows = table._selectedRows ? Array.from(table._selectedRows).map(i=>i+1).sort((a,b)=>a-b) : [];
+        const cols = table._selectedCols ? Array.from(table._selectedCols).map(columnLabel).sort((a,b)=>a.localeCompare(b)) : [];
+        rowInput.value = rows.join(', ');
+        colInput.value = cols.join(', ');
+        if(deleteRowsBtn) deleteRowsBtn.disabled = rows.length===0;
+        if(deleteColsBtn) deleteColsBtn.disabled = cols.length===0;
+        if(deleteBlankBtn) deleteBlankBtn.disabled = cols.length===0;
+        if(activePanel && table.closest('.panel') === activePanel){
+          if(rowInputGlobal) rowInputGlobal.value = rowInput.value;
+          if(colInputGlobal) colInputGlobal.value = colInput.value;
+          if(deleteRowsGlobalBtn) deleteRowsGlobalBtn.disabled = rows.length===0;
+          if(deleteColsGlobalBtn) deleteColsGlobalBtn.disabled = cols.length===0;
+          if(deleteBlanksGlobalBtn) deleteBlanksGlobalBtn.disabled = cols.length===0;
+        }
+      }
+    </script>
+  </body>
+  </html>
+
+
+

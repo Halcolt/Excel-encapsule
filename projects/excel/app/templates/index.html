@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ t('app_title') }}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+      .container { max-width: 900px; margin: 0 auto; }
+      .card { border: 1px solid #ddd; padding: 1rem 1.5rem; border-radius: 8px; }
+      .btn { padding: 0.6rem 1rem; background: #2266ee; color: white; border: none; border-radius: 6px; cursor: pointer; }
+      .btn:disabled { background: #aac1ff; }
+      .btn-secondary { background: #666; color: white; }
+      .btn-ghost { background: #f1f1f1; color: #222; border: 1px solid #ccc; }
+      .flash { color: #b00020; margin-bottom: 1rem; }
+      .files { margin-top: 0.5rem; border: 1px dashed #ccc; padding: 0.75rem; border-radius: 8px; background: #fafafa; }
+      .files h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: #555; }
+      .file-list { list-style: none; padding-left: 0; margin: 0; }
+      .file-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border: 1px solid #e7e7e7; border-radius: 6px; background: white; margin-bottom: 6px; }
+      .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%; }
+      .remove { background: #eee; border: 1px solid #ccc; border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+      .actions { display: flex; gap: 8px; margin-top: 0.75rem; }
+      .topbar { display: flex; align-items: center; margin-bottom: 1rem; gap: 12px; }
+      .lang { margin-left: auto; }
+      .lang .switch { display: inline-flex; border: 1px solid #ccc; border-radius: 999px; overflow: hidden; }
+      .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
+      .lang .switch a:last-child { border-right: none; }
+      .lang .switch a.active { background: #2266ee; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <h1 style="margin: 0;">{{ t('app_title') }}</h1>
+        <div class="lang">
+          <div class="switch">
+            <a href="{{ url_for('set_lang_route', lang='en', next=request.url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
+            <a href="{{ url_for('set_lang_route', lang='vi', next=request.url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+          </div>
+        </div>
+      </div>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="flash">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+
+      <div class="card">
+        <p>{{ t('upload_intro') }}</p>
+        <div class="files">
+          <h3>{{ t('selected_files') }}</h3>
+          <ul id="fileList" class="file-list"></ul>
+          <div class="actions">
+            <button id="addBtn" class="btn-ghost" type="button">{{ t('add_files') }}</button>
+            <button id="clearBtn" class="btn-ghost" type="button">{{ t('clear_all') }}</button>
+            <button id="continueBtn" class="btn" type="button">{{ t('continue') }}</button>
+          </div>
+          <input id="picker" type="file" accept=".xlsx,.csv" multiple style="display:none" />
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const addBtn = document.getElementById('addBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const continueBtn = document.getElementById('continueBtn');
+      const picker = document.getElementById('picker');
+      const fileListEl = document.getElementById('fileList');
+
+      // Keep a Map of key -> File to prevent duplicates
+      const filesMap = new Map();
+
+      function fileKey(f) {
+        return `${f.name}__${f.size}__${f.lastModified}`;
+      }
+
+      function renderList() {
+        fileListEl.innerHTML = '';
+        if (filesMap.size === 0) {
+          const li = document.createElement('li');
+          li.textContent = '{{ t('no_files_selected') }}';
+          li.style.color = '#777';
+          fileListEl.appendChild(li);
+          return;
+        }
+        [...filesMap.values()].forEach(f => {
+          const li = document.createElement('li');
+          li.className = 'file-item';
+          const name = document.createElement('span');
+          name.className = 'file-name';
+          name.textContent = `${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+          const rm = document.createElement('button');
+          rm.className = 'remove';
+          rm.type = 'button';
+          rm.textContent = 'Remove';
+          rm.addEventListener('click', () => {
+            filesMap.delete(fileKey(f));
+            renderList();
+          });
+          li.appendChild(name);
+          li.appendChild(rm);
+          fileListEl.appendChild(li);
+        });
+      }
+
+      addBtn.addEventListener('click', () => picker.click());
+      clearBtn.addEventListener('click', () => { filesMap.clear(); renderList(); });
+
+      picker.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files || []);
+        files.forEach(f => filesMap.set(fileKey(f), f));
+        // reset input so selecting the same file again still triggers change
+        picker.value = '';
+        renderList();
+      });
+
+      continueBtn.addEventListener('click', async () => {
+        if (filesMap.size === 0) {
+          alert('{{ t('alert_add_at_least_one_file') }}');
+          return;
+        }
+        const form = new FormData();
+        for (const f of filesMap.values()) {
+          form.append('files', f, f.name);
+        }
+        try {
+          const resp = await fetch('{{ url_for('upload_files') }}', { method: 'POST', body: form, credentials: 'same-origin' });
+          if (!resp.ok) {
+            alert('{{ t('alert_upload_failed') }}');
+            return;
+          }
+          // Redirect to the final URL (should be /select/<token>)
+          window.location.href = resp.url;
+        } catch (err) {
+          alert('{{ t('alert_network_error') }}');
+        }
+      });
+
+      // initial
+      renderList();
+    </script>
+  </body>
+  </html>
+

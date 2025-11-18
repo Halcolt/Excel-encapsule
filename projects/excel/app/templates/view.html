@@ -1,0 +1,449 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ filename }} - {{ t('app_title') }}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+      .container { max-width: 95%; margin: 0 auto; }
+      .btn { padding: 0.5rem 0.8rem; background: #eee; color: #222; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; text-decoration: none; }
+      .btn.primary { background: #2266ee; color: #fff; border-color: #1d54c2; }
+      .btn.secondary { background: #f6f6f6; border-color: #c6c6c6; }
+      .btn.danger { background: #fbeaea; border-color: #f2b4b4; color: #a00; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #ddd; padding: 6px 8px; }
+      th { background: #f7f7f7; text-align: left; }
+      .meta { margin-bottom: 1rem; color: #555; }
+      .actions { margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+      .nav-buttons { display: flex; gap: 8px; }
+      .lang .switch { display: inline-flex; border: 1px solid #ccc; border-radius: 999px; overflow: hidden; }
+      .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
+      .lang .switch a:last-child { border-right: none; }
+      .lang .switch a.active { background: #2266ee; color: #fff; }
+      .table-actions { margin: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+      .active-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+      .table-wrap { overflow: auto; max-height: 70vh; border: 1px solid #ddd; border-radius: 6px; }
+      .filter-btn { margin-left: 6px; width: 22px; height: 22px; padding: 0; line-height: 20px; text-align: center; font-size: 12px; border: 1px solid #ccc; background: #f7f7f7; border-radius: 4px; cursor: pointer; }
+      .filter-panel { position: absolute; z-index: 1000; background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 240px; padding: 8px; display: none; }
+      .filter-panel .search { width: 100%; box-sizing: border-box; padding: 6px 8px; margin-bottom: 6px; }
+      .filter-panel .list { max-height: 200px; overflow: auto; border: 1px solid #eee; border-radius: 4px; padding: 6px; }
+      .filter-panel .actions { margin-top: 8px; display: flex; justify-content: flex-end; gap: 8px; }
+      .filter-tag { display: inline-block; background: #e9f1ff; color: #225; border: 1px solid #cfe1ff; border-radius: 999px; padding: 2px 6px; font-size: 0.75rem; }
+      .row-marker, .col-marker, .corner-marker { background: #f1f4fa; font-weight: 600; text-align: center; }
+      .row-marker { cursor: pointer; width: 42px; }
+      .col-marker { cursor: pointer; }
+      .selected-row td, .selected-row th { background: #fff6da !important; }
+      td.col-selected, th.col-selected { background: #e9f3ff !important; }
+      .selection-status { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+      .selection-status label { font-size: 0.85rem; color: #444; display: flex; align-items: center; gap: 4px; }
+      .selection-status input { width: 160px; padding: 4px 6px; border: 1px solid #ccc; border-radius: 4px; background: #fafafa; }
+      .edit-controls { margin: 0.75rem 0 1rem; display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; }
+      .edit-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+      .color-control { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      .color-control label { font-size: 0.85rem; color: #444; display: flex; align-items: center; gap: 8px; }
+      .color-control input[type=\"color\"] { width: 48px; height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
+      .color-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+      td.cell-selected { outline: 2px solid #ff9800; outline-offset: -2px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="actions">
+        <div class="nav-buttons">
+          {% if token %}
+            <a class="btn" href="{{ url_for('select', token=token) }}">{{ t('back') }}</a>
+          {% else %}
+            <a class="btn" href="{{ url_for('index') }}">{{ t('back') }}</a>
+          {% endif %}
+          <a class="btn secondary" href="{{ url_for('index') }}">{{ t('home') }}</a>
+        </div>
+        <div class="lang">
+          <div class="switch">
+            {% set next_url = token and url_for('select', token=token) or url_for('index') %}
+            <a href="{{ url_for('set_lang_route', lang='en', next=next_url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
+            <a href="{{ url_for('set_lang_route', lang='vi', next=next_url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+          </div>
+        </div>
+      </div>
+      <h2>{{ filename }}</h2>
+      {% if sheet_name %}<div class="meta">{{ t('sheet') }}: {{ sheet_name }}</div>{% endif %}
+      <div class="table-actions">
+        <div id="activeFilters" class="active-filters"></div>
+        <button id="clearFiltersBtn" class="btn" type="button">{{ t('clear_filters') }}</button>
+      </div>
+      <div class="selection-status">
+        <label>{{ t('selected_rows') }}<input type="text" id="rowSelection" readonly></label>
+        <label>{{ t('selected_columns') }}<input type="text" id="colSelection" readonly></label>
+      </div>
+      <div class="edit-controls">
+        <div class="edit-buttons">
+          <button id="deleteRowsBtn" class="btn danger" type="button" disabled>{{ t('delete_rows') }}</button>
+          <button id="deleteColsBtn" class="btn danger" type="button" disabled>{{ t('delete_columns') }}</button>
+          <button id="deleteBlankBtn" class="btn danger" type="button" disabled>{{ t('delete_blank_rows') }}</button>
+        </div>
+        <div class="color-control">
+          <label>{{ t('color_picker_label') }}
+            <input id="cellColorInput" type="color" value="#fff8b1">
+          </label>
+          <div class="color-buttons">
+            <button id="applyColorBtn" class="btn secondary" type="button">{{ t('apply_color') }}</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-wrap"><div id="tableContainer">{{ table_html|safe }}</div></div>
+      <script>
+        (function(){
+          const table = document.querySelector('#tableContainer table');
+          if(!table || !table.tHead) return;
+          const rowInput = document.getElementById('rowSelection');
+          const colInput = document.getElementById('colSelection');
+          const filtersSummary = document.getElementById('activeFilters');
+          const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+          const deleteRowsBtn = document.getElementById('deleteRowsBtn');
+          const deleteColsBtn = document.getElementById('deleteColsBtn');
+          const deleteBlankBtn = document.getElementById('deleteBlankBtn');
+          const cellColorInput = document.getElementById('cellColorInput');
+          const applyColorBtn = document.getElementById('applyColorBtn');
+
+          if(clearFiltersBtn && !clearFiltersBtn.dataset.bound){
+            clearFiltersBtn.addEventListener('click',()=>clearAllFilters(table, filtersSummary));
+            clearFiltersBtn.dataset.bound='1';
+          }
+
+          initializeTable();
+
+          deleteRowsBtn?.addEventListener('click', handleDeleteRows);
+          deleteColsBtn?.addEventListener('click', handleDeleteColumns);
+          deleteBlankBtn?.addEventListener('click', handleDeleteBlankRows);
+          applyColorBtn?.addEventListener('click', ()=>applyColorToSelection(cellColorInput?.value));
+
+          function initializeTable(){
+            stripEnhancements(table);
+            addRowColMarkers(table);
+            setupFilters(table, filtersSummary);
+            attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
+            attachCellSelection(table);
+            updateSelectionInputs(table, rowInput, colInput);
+            refreshRowHighlights(table);
+            refreshColHighlights(table);
+            refreshCellHighlights(table);
+          }
+
+          function handleDeleteRows(){
+            if(!table._selectedRows || table._selectedRows.size===0) return;
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            Array.from(table._selectedRows).sort((a,b)=>b-a).forEach(idx=>{
+              rows[idx]?.remove();
+            });
+            initializeTable();
+          }
+          function handleDeleteColumns(){
+            if(!table._selectedCols || table._selectedCols.size===0) return;
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const header=table.tHead.querySelector('tr[data-role="data-header"]');
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            Array.from(table._selectedCols).sort((a,b)=>b-a).forEach(colIdx=>{
+              header?.cells[colIdx+offset]?.remove();
+              rows.forEach(row=>{
+                row.cells[colIdx+offset]?.remove();
+              });
+            });
+            initializeTable();
+          }
+          function handleDeleteBlankRows(){
+            if(!table._selectedCols || table._selectedCols.size===0) return;
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const targets=Array.from(table._selectedCols);
+            let removed=false;
+            rows.forEach(row=>{
+              const shouldRemove=targets.every(colIdx=>{
+                const cell=row.cells[colIdx+offset];
+                const raw=(cell?cell.innerText:'');
+                const normalized=raw.trim().toLowerCase();
+                return normalized==='' || normalized==='null' || normalized==='na' || normalized==='nan';
+              });
+              if(shouldRemove){
+                row.remove();
+                removed=true;
+              }
+            });
+            if(removed) initializeTable();
+          }
+          function applyColorToSelection(color){
+            if(!color) return;
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const colorRows = table._selectedRows && table._selectedRows.size>0;
+            const colorCols = table._selectedCols && table._selectedCols.size>0;
+            const colorCells = table._selectedCells && table._selectedCells.size>0;
+            if(!colorRows && !colorCols && !colorCells) return;
+            if(colorRows){
+              table._selectedRows.forEach(idx=>{
+                const row=rows[idx];
+                if(!row) return;
+                for(let c=offset;c<row.cells.length;c++){
+                  const cell=row.cells[c];
+                  if(cell) cell.style.backgroundColor=color;
+                }
+              });
+            }
+            if(colorCols){
+              table._selectedCols.forEach(colIdx=>{
+                rows.forEach(row=>{
+                  const cell=row.cells[colIdx+offset];
+                  if(cell) cell.style.backgroundColor=color;
+                });
+              });
+            }
+            if(colorCells){
+              table._selectedCells.forEach(key=>{
+                const cell=getCellByKey(table, key);
+                if(cell) cell.style.backgroundColor=color;
+              });
+            }
+          }
+          function columnLabel(idx){
+            let label='';
+            while(idx>=0){ label = String.fromCharCode(65 + (idx % 26)) + label; idx = Math.floor(idx / 26) - 1; }
+            return label;
+          }
+          function collectUnique(table){
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const header=table.tHead.querySelector('tr[data-role="data-header"]');
+            const colCount=header? header.cells.length - offset : 0;
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const sets=Array.from({length:colCount},()=>new Set());
+            rows.forEach(r=>{ for(let c=0;c<colCount;c++){ const cell=r.cells[c+offset]; const text=(cell?cell.innerText:''); sets[c].add(text); } });
+            return sets.map(s=>Array.from(s).sort((a,b)=>a.localeCompare(b)));
+          }
+          function addRowColMarkers(table){
+            const dataHeader=table.tHead.rows[0];
+            dataHeader.dataset.role='data-header';
+            const markerRow=table.tHead.insertRow(0);
+            markerRow.dataset.role='marker-row';
+            const corner=document.createElement('th'); corner.className='corner-marker'; markerRow.appendChild(corner);
+            const headerCorner=document.createElement('th'); headerCorner.className='corner-marker'; dataHeader.insertBefore(headerCorner, dataHeader.firstChild);
+            const colCount=dataHeader.cells.length-1;
+            for(let c=0;c<colCount;c++){
+              const th=document.createElement('th'); th.className='col-marker'; th.dataset.colIndex=c; th.textContent=columnLabel(c); markerRow.appendChild(th);
+            }
+            Array.from(table.tBodies[0].rows).forEach((row, idx)=>{
+              const marker=document.createElement('th'); marker.className='row-marker'; marker.dataset.rowIndex=idx; marker.textContent=idx+1; row.insertBefore(marker, row.firstChild);
+            });
+            table.dataset.markerOffset='1';
+          }
+          function stripEnhancements(table){
+            if(!table.tHead) return;
+            const thead=table.tHead;
+            const markerRow=Array.from(thead.rows).find(r=>r.dataset.role==='marker-row');
+            if(markerRow) markerRow.remove();
+            const header=thead.querySelector('tr[data-role=\"data-header\"]') || thead.rows[0];
+            if(header && !header.dataset.role){
+              header.dataset.role='data-header';
+            }
+            if(header){
+              header.querySelectorAll('.filter-btn').forEach(btn=>btn.remove());
+              const firstCell=header.cells[0];
+              if(firstCell && firstCell.classList.contains('corner-marker')) header.deleteCell(0);
+            }
+            const bodyRows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            bodyRows.forEach(row=>{
+              row.classList.remove('selected-row');
+              row.querySelectorAll('td').forEach(cell=>{
+                cell.classList.remove('cell-selected');
+              });
+              const first=row.cells[0];
+              if(first && first.classList.contains('row-marker')) row.deleteCell(0);
+            });
+            delete table.dataset.markerOffset;
+            table._selectedRows=new Set();
+            table._selectedCols=new Set();
+            table._selectedCells=new Set();
+            delete table.dataset.cellSelectionBound;
+          }
+          function renderFilterTags(summaryEl, filters){
+            summaryEl.innerHTML='';
+            filters.forEach((vals, idx)=>{
+              if(vals && vals.length){
+                const pill=document.createElement('span'); pill.className='filter-tag'; pill.textContent=`${columnLabel(idx)} (${vals.length})`;
+                summaryEl.appendChild(pill);
+              }
+            });
+          }
+          function setupFilters(table, summaryEl){
+            const header=table.tHead.querySelector('tr[data-role="data-header"]');
+            if(!header) return;
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const unique=collectUnique(table);
+            const state=unique.map(()=>[]);
+            table._filters=state;
+            for(let c=offset;c<header.cells.length;c++){
+              const th=header.cells[c];
+              const btn=document.createElement('button'); btn.type='button'; btn.className='filter-btn'; btn.title='{{ t('filter') }}'; btn.textContent='\u25BE';
+              btn.dataset.colIndex=c-offset;
+              btn.addEventListener('click',(e)=>openFilterPanel(e.currentTarget, table, parseInt(e.currentTarget.dataset.colIndex,10), summaryEl));
+              th.appendChild(btn);
+            }
+            renderFilterTags(summaryEl, state);
+          }
+          function openFilterPanel(anchor, table, col, summaryEl){
+            closeFilterPanel();
+            const panel=document.createElement('div'); panel.className='filter-panel'; panel.id='filterPanel';
+            const rect=anchor.getBoundingClientRect();
+            panel.style.left=(window.scrollX+rect.left)+'px'; panel.style.top=(window.scrollY+rect.bottom+4)+'px';
+            const values=collectUnique(table)[col];
+            const search=document.createElement('input'); search.className='search'; search.placeholder='{{ t('filter_search') }}';
+            const list=document.createElement('div'); list.className='list';
+            const controls=document.createElement('div'); controls.className='actions';
+            const applyBtn=document.createElement('button'); applyBtn.className='btn primary'; applyBtn.textContent='{{ t('filter_apply') }}';
+            const clearBtn=document.createElement('button'); clearBtn.className='btn secondary'; clearBtn.textContent='{{ t('filter_clear') }}';
+            const selected=new Set(table._filters[col]||[]);
+            function renderList(){
+              list.innerHTML='';
+              const q=(search.value||'').toLowerCase();
+              values.filter(v=>v.toLowerCase().includes(q)).forEach(v=>{
+                const label=document.createElement('label'); label.style.display='block';
+                const cb=document.createElement('input'); cb.type='checkbox'; cb.value=v; cb.checked=selected.has(v);
+                label.appendChild(cb); label.appendChild(document.createTextNode(' '+(v===''?'{{ t('filter_blank') }}':v)));
+                cb.addEventListener('change',()=>{ if(cb.checked) selected.add(v); else selected.delete(v); });
+                list.appendChild(label);
+              });
+            }
+            renderList();
+            search.addEventListener('input',renderList);
+            applyBtn.addEventListener('click',()=>{ table._filters[col]=Array.from(selected); applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+            clearBtn.addEventListener('click',()=>{ selected.clear(); table._filters[col]=[]; applyFilters(table); renderFilterTags(summaryEl, table._filters); closeFilterPanel(); });
+            panel.appendChild(search); panel.appendChild(list); controls.appendChild(clearBtn); controls.appendChild(applyBtn); panel.appendChild(controls);
+            document.body.appendChild(panel); panel.style.display='block';
+            setTimeout(()=>{ document.addEventListener('click',outsideClose,{ once:true }); },0);
+            function outsideClose(ev){ if(!panel.contains(ev.target) && ev.target!==anchor){ closeFilterPanel(); } }
+          }
+          function closeFilterPanel(){ const p=document.getElementById('filterPanel'); if(p) p.remove(); }
+          function clearAllFilters(table, summaryEl){ if(!table._filters) return; table._filters=table._filters.map(()=>[]); applyFilters(table); renderFilterTags(summaryEl, table._filters); }
+          function applyFilters(table){
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const filters=table._filters || [];
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            rows.forEach(row=>{
+              let show=true;
+              for(let c=0;c<filters.length;c++){
+                const chosen=filters[c]; if(!chosen || chosen.length===0) continue;
+                const text=(row.cells[c+offset]?row.cells[c+offset].innerText:'');
+                if(!chosen.includes(text)){ show=false; break; }
+              }
+              row.style.display=show?'':'none';
+            });
+          }
+          function attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtnRef, deleteColsBtnRef, deleteBlankBtnRef){
+            table._selectedRows = new Set();
+            table._selectedCols = new Set();
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            rows.forEach((row, idx)=>{
+              const marker=row.querySelector('.row-marker');
+              marker?.addEventListener('click',(ev)=>{
+                handleSetToggle(ev, table._selectedRows, idx);
+                refreshRowHighlights(table);
+                updateSelectionInputs(table, rowInput, colInput, deleteRowsBtnRef, deleteColsBtnRef, deleteBlankBtnRef);
+              });
+            });
+            table.querySelectorAll('.col-marker').forEach(marker=>{
+              const colIdx=parseInt(marker.dataset.colIndex,10);
+              marker.addEventListener('click',(ev)=>{
+                handleSetToggle(ev, table._selectedCols, colIdx);
+                refreshColHighlights(table);
+                updateSelectionInputs(table, rowInput, colInput, deleteRowsBtnRef, deleteColsBtnRef, deleteBlankBtnRef);
+              });
+            });
+            function handleSetToggle(ev, set, value){
+              const additive = ev.ctrlKey || ev.metaKey;
+              if(!additive){ set.clear(); }
+              if(additive && set.has(value)) set.delete(value); else set.add(value);
+            }
+          }
+          function refreshRowHighlights(table){
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            rows.forEach((row, idx)=>{
+              if(table._selectedRows && table._selectedRows.has(idx)) row.classList.add('selected-row'); else row.classList.remove('selected-row');
+            });
+          }
+          function refreshColHighlights(table){
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const markers=table.querySelectorAll('.col-marker');
+            markers.forEach(marker=>{
+              const idx=parseInt(marker.dataset.colIndex,10);
+              if(table._selectedCols && table._selectedCols.has(idx)) marker.classList.add('col-selected'); else marker.classList.remove('col-selected');
+            });
+            rows.forEach(row=>{
+              for(let c=offset;c<row.cells.length;c++){
+                row.cells[c].classList.remove('col-selected');
+              }
+            });
+            if(table._selectedCols){
+              table._selectedCols.forEach(colIdx=>{
+                rows.forEach(row=>{
+                  const cell=row.cells[colIdx+offset]; if(cell) cell.classList.add('col-selected');
+                });
+              });
+            }
+          }
+          function attachCellSelection(table){
+            table._selectedCells = new Set();
+            if(table.dataset.cellSelectionBound==='1') return;
+            table.addEventListener('click',(ev)=>{
+              const cell=ev.target.closest('td');
+              if(!cell || !table.contains(cell)) return;
+              const row=cell.closest('tr');
+              if(!row || row.parentElement?.tagName !== 'TBODY') return;
+              const offset=parseInt(table.dataset.markerOffset || '0',10);
+              const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+              const rowIdx=rows.indexOf(row);
+              if(rowIdx<0) return;
+              const colIdx=Array.from(row.cells).indexOf(cell)-offset;
+              if(colIdx<0) return;
+              const key=`${rowIdx}:${colIdx}`;
+              const additive = ev.ctrlKey || ev.metaKey;
+              if(!additive) table._selectedCells.clear();
+              if(additive && table._selectedCells.has(key)) table._selectedCells.delete(key);
+              else table._selectedCells.add(key);
+              refreshCellHighlights(table);
+            });
+            table.dataset.cellSelectionBound='1';
+          }
+          function updateSelectionInputs(table, rowInput, colInput, deleteRowsBtnRef, deleteColsBtnRef, deleteBlankBtnRef){
+            const rows = table._selectedRows ? Array.from(table._selectedRows).map(i=>i+1).sort((a,b)=>a-b) : [];
+            const cols = table._selectedCols ? Array.from(table._selectedCols).map(columnLabel).sort((a,b)=>a.localeCompare(b)) : [];
+            rowInput.value = rows.join(', ');
+            colInput.value = cols.join(', ');
+            if(deleteRowsBtnRef) deleteRowsBtnRef.disabled = rows.length===0;
+            if(deleteColsBtnRef) deleteColsBtnRef.disabled = cols.length===0;
+            if(deleteBlankBtnRef) deleteBlankBtnRef.disabled = cols.length===0;
+          }
+          function refreshCellHighlights(table){
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            rows.forEach(row=>{
+              row.querySelectorAll('td').forEach(cell=>cell.classList.remove('cell-selected'));
+            });
+            if(!table._selectedCells) return;
+            table._selectedCells.forEach(key=>{
+              const cell=getCellByKey(table, key);
+              if(cell) cell.classList.add('cell-selected');
+            });
+          }
+          function getCellByKey(table, key){
+            const [rowIdx, colIdx]=key.split(':').map(Number);
+            if(Number.isNaN(rowIdx) || Number.isNaN(colIdx)) return null;
+            const offset=parseInt(table.dataset.markerOffset || '0',10);
+            const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+            const row=rows[rowIdx];
+            if(!row) return null;
+            return row.cells[colIdx+offset] || null;
+          }
+        })();
+      </script>
+    </div>
+  </body>
+  </html>

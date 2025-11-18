@@ -1,0 +1,86 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>{{ t('select_file_and_sheet') }}</title>
+    <style>
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
+      .container { max-width: 900px; margin: 0 auto; }
+      .btn { padding: 0.6rem 1rem; background: #2266ee; color: white; border: none; border-radius: 6px; cursor: pointer; }
+      .btn.ghost { background: #f5f5f5; color: #333; border: 1px solid #ccc; }
+      .back { padding: 0.5rem 0.8rem; background: #eee; color: #222; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; }
+      .card { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 1rem; }
+      .card h3 { margin: 0; padding: 0.8rem 1rem; border-bottom: 1px solid #eee; font-size: 1.05rem; background: #fafafa; }
+      .card .body { padding: 0.8rem 1rem; }
+      .file-actions { display: flex; gap: 8px; margin-bottom: 0.6rem; flex-wrap: wrap; }
+      .file-actions button { padding: 0.35rem 0.7rem; border-radius: 6px; border: 1px solid #ccc; background: #f7f7f7; cursor: pointer; font-size: 0.85rem; }
+      ul { list-style: none; padding-left: 0; }
+      li { margin: 0.25rem 0; }
+      .sheet { color: #555; }
+      .actions { margin-top: 1rem; }
+      .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+      .lang { margin-left: auto; }
+      .lang .switch { display: inline-flex; border: 1px solid #ccc; border-radius: 999px; overflow: hidden; }
+      .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
+      .lang .switch a:last-child { border-right: none; }
+      .lang .switch a.active { background: #2266ee; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <a class="back" href="{{ url_for('index') }}">{{ t('back') }}</a>
+        <div class="lang">
+          <div class="switch">
+            <a href="{{ url_for('set_lang_route', lang='en', next=request.url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
+            <a href="{{ url_for('set_lang_route', lang='vi', next=request.url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+          </div>
+        </div>
+      </div>
+      <h1>{{ t('select_file_and_sheet') }}</h1>
+      <form action="{{ url_for('render_multi') }}" method="post">
+        <input type="hidden" name="token" value="{{ token }}" />
+        {% for f in files %}
+          <div class="card">
+            <h3>{{ f.filename }}</h3>
+            <div class="body">
+              <div class="file-actions">
+                <button type="button" data-file="{{ f.filename }}" data-action="select">{{ t('select_all_sheets') }}</button>
+                <button type="button" data-file="{{ f.filename }}" data-action="clear">{{ t('clear_file_selection') }}</button>
+              </div>
+              {% if f.ext == 'csv' %}
+                <label>
+                  <input type="checkbox" name="selection" value="{{ f.filename }}::" data-file="{{ f.filename }}">
+                  <span class="sheet">{{ t('csv_single_sheet') }}</span>
+                </label>
+              {% else %}
+                <ul>
+                  {% for s in f.sheets %}
+                    <li>
+                      <label>
+                        <input type="checkbox" name="selection" value="{{ f.filename }}::{{ s }}" data-file="{{ f.filename }}">
+                        <span class="sheet">{{ t('sheet') }}: {{ s }}</span>
+                      </label>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+        <div class="actions">
+          <button class="btn" type="submit">{{ t('open') }}</button>
+        </div>
+      </form>
+    </div>
+    <script>
+      document.querySelectorAll('.file-actions button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const file = btn.dataset.file;
+          const selecting = btn.dataset.action === 'select';
+          document.querySelectorAll(`input[data-file="${file}"]`).forEach(cb => cb.checked = selecting);
+        });
+      });
+    </script>
+  </body>
+  </html>
