@@ -120,11 +120,17 @@
           return;
         }
         const form = new FormData();
+        form.append('csrf_token', '{{ csrf_token() }}');
         for (const f of filesMap.values()) {
           form.append('files', f, f.name);
         }
         try {
-          const resp = await fetch('{{ url_for('upload_files') }}', { method: 'POST', body: form, credentials: 'same-origin' });
+          const resp = await fetch('{{ url_for('upload_files') }}', {
+            method: 'POST',
+            body: form,
+            credentials: 'same-origin',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+          });
           if (!resp.ok) {
             alert('{{ t('alert_upload_failed') }}');
             return;

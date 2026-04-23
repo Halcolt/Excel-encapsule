@@ -6,12 +6,15 @@ from pathlib import Path
 import uuid
 import json
 from io import BytesIO
+from io import StringIO
 import re
 from urllib.parse import urlparse
 import os
 import logging
 import threading
 import time
+import csv
+import secrets
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -47,16 +50,85 @@ if not logger.handlers:
     logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 
 ALLOWED_EXTENSIONS = {"xlsx", "csv"}
+CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp1258", "cp1252", "latin1")
+CSV_DELIMITERS = [",", ";", "\t", "|"]
 
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+def get_csrf_token() -> str:
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def _request_csrf_token() -> str:
+    token = request.form.get("csrf_token") or request.headers.get("X-CSRFToken")
+    if not token and request.is_json:
+        payload = request.get_json(silent=True) or {}
+        token = payload.get("csrf_token")
+    return token or ""
+
+
+@app.before_request
+def _validate_csrf_token():
+    if request.method != "POST":
+        return None
+    expected = session.get("_csrf_token")
+    supplied = _request_csrf_token()
+    if not expected or not supplied or not secrets.compare_digest(expected, supplied):
+        return {"error": tr("flash_invalid_csrf")}, 400
+    return None
+
+
 def get_token_dir(token: str) -> Path:
     d = UPLOAD_ROOT / token
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def _sniff_csv_delimiter(text: str) -> str | None:
+    sample = text[:65536]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=CSV_DELIMITERS)
+        return dialect.delimiter
+    except csv.Error:
+        return None
+
+
+def read_csv_smart(path: Path) -> tuple[pd.DataFrame, dict[str, str]]:
+    raw = path.read_bytes()
+    last_error: Exception | None = None
+
+    for encoding in CSV_ENCODINGS:
+        try:
+            text = raw.decode(encoding)
+        except UnicodeDecodeError as exc:
+            last_error = exc
+            continue
+
+        detected = _sniff_csv_delimiter(text)
+        candidates = [detected] if detected else []
+        candidates.extend(d for d in CSV_DELIMITERS if d not in candidates)
+        parsed: list[tuple[pd.DataFrame, dict[str, str]]] = []
+
+        for delimiter in candidates:
+            try:
+                df = pd.read_csv(StringIO(text), sep=delimiter)
+                parsed.append((df, {"encoding": encoding, "delimiter": delimiter}))
+            except Exception as exc:
+                last_error = exc
+
+        if parsed:
+            if detected:
+                return parsed[0]
+            return max(parsed, key=lambda item: len(item[0].columns))
+
+    raise last_error or ValueError("Could not read CSV file")
 
 
 def _cleanup_old_tokens_loop():
@@ -164,7 +236,7 @@ def _bind_lang():
 
 @app.context_processor
 def _inject_t():
-    return {"t": tr, "current_lang": getattr(g, "lang", "en")}
+    return {"t": tr, "current_lang": getattr(g, "lang", "en"), "csrf_token": get_csrf_token}
 
 
 @app.route("/set-lang/<lang>")
@@ -231,13 +303,18 @@ def select(token: str):
         ext = filename.rsplit(".", 1)[1].lower()
         if ext == "csv":
             sheets = ["CSV"]
+            try:
+                _, csv_meta = read_csv_smart(p)
+            except Exception:
+                csv_meta = {}
         else:
+            csv_meta = {}
             try:
                 xls = pd.ExcelFile(p)
                 sheets = list(xls.sheet_names)
             except Exception:
                 sheets = []
-        files.append({"filename": filename, "ext": ext, "sheets": sheets})
+        files.append({"filename": filename, "ext": ext, "sheets": sheets, "csv_meta": csv_meta})
 
     if not files:
         flash(tr("flash_uploaded_unreadable"))
@@ -269,7 +346,7 @@ def render_view():
 
     try:
         if ext == "csv":
-            df = pd.read_csv(path)
+            df, _ = read_csv_smart(path)
             df = df.fillna("")
             table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
             return render_template("view.html", filename=filename, sheet_name=None, table_html=table_html, token=token)
@@ -312,7 +389,7 @@ def render_multi():
         ext = filename.rsplit(".", 1)[1].lower()
         try:
             if ext == "csv":
-                df = pd.read_csv(path)
+                df, _ = read_csv_smart(path)
                 df = df.fillna("")
                 label = f"{filename}"
                 table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")

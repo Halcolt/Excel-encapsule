@@ -4,16 +4,18 @@
     <meta charset="utf-8">
     <title>{{ t('selected_sheets') }}</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 2rem; }
-      .layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
-      .layout.sidebar-collapsed { grid-template-columns: 96px 1fr; }
-      .sidebar { background: #f8f9fc; border: 1px solid #dde3f3; border-radius: 16px; padding: 18px; position: sticky; top: 20px; height: fit-content; box-shadow: 0 10px 26px rgba(13,37,88,0.12); max-height: calc(100vh - 40px); overflow-y: auto; }
-      .sidebar.collapsed { width: 76px; padding: 18px 10px; overflow: visible; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f4f6fa; color: #111827; overflow: hidden; }
+      .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 0; align-items: stretch; height: 100vh; }
+      .layout.sidebar-collapsed { grid-template-columns: 72px minmax(0, 1fr); }
+      .sidebar { background: #f8fafc; border-right: 1px solid #d8dee9; padding: 16px 14px; height: 100vh; overflow-y: auto; }
+      .sidebar.collapsed { width: auto; padding: 16px 10px; overflow: hidden; }
       .sidebar .nav-buttons { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
       .collapse-toggle { border: none; background: #e4e9fb; border-radius: 999px; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #1e2e66; box-shadow: inset 0 0 0 1px #d0d6f5; }
       .collapse-icon { transition: transform 0.2s ease; font-size: 1rem; line-height: 1; }
       .logo-home { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: #1d2a52; font-weight: 600; flex: 1; min-width: 0; }
-      .logo-icon { width: 46px; height: 46px; border-radius: 14px; background: radial-gradient(circle at 30% 30%, #6fffd6, #1f6feb); display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 8px rgba(255,255,255,0.7), 0 6px 14px rgba(31,111,235,0.35); }
+      .logo-icon { width: 42px; height: 42px; border-radius: 8px; background: #2563eb; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(37,99,235,0.22); }
       .logo-icon svg { width: 28px; height: 28px; }
       .logo-text { display: flex; flex-direction: column; line-height: 1.1; }
       .logo-title { font-size: 0.95rem; letter-spacing: 0.01em; }
@@ -26,22 +28,27 @@
       .sidebar .menu-tabs { margin-bottom: 16px; background: #e7ecfb; border-radius: 999px; padding: 4px; display: flex; gap: 4px; }
       .sidebar .menu-tab { flex: 1; border-radius: 999px; border: none; background: transparent; font-weight: 600; color: #5b6a94; cursor: pointer; padding: 6px 0; }
       .sidebar .menu-tab.active { background: #fff; color: #1d49ad; box-shadow: 0 4px 12px rgba(43,74,166,0.2); }
-      .content-area { overflow: hidden; }
+      .content-area { min-width: 0; height: 100vh; overflow: hidden; display: flex; flex-direction: column; background: #ffffff; }
+      .workspace-header { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: center; padding: 16px 18px 12px; border-bottom: 1px solid #e2e8f0; background: #ffffff; }
+      .workspace-title { min-width: 0; }
+      .workspace-title h1 { margin: 0; font-size: 1.2rem; line-height: 1.25; letter-spacing: 0; }
+      .workspace-title .subtitle { margin-top: 3px; color: #64748b; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .workspace-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
       .back { padding: 0.5rem 0.8rem; background: #eee; color: #222; border: 1px solid #ccc; border-radius: 6px; text-decoration: none; }
-      .btn { padding: 0.5rem 0.8rem; border-radius: 6px; border: 1px solid #ccc; cursor: pointer; text-decoration: none; }
+      .btn { padding: 0.45rem 0.7rem; border-radius: 6px; border: 1px solid #cbd5e1; cursor: pointer; text-decoration: none; background: #fff; color: #0f172a; font-size: 0.9rem; }
       .btn.primary { background: #2266ee; color: #fff; border-color: #1d54c2; }
-      .btn.secondary { background: #f7f7f7; color: #222; border-color: #c6c6c6; }
+      .btn.secondary { background: #f8fafc; color: #222; border-color: #c6c6c6; }
       .btn.danger { background: #fbeaea; border-color: #f2b4b4; color: #a00; }
       .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-      .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 1rem 0; }
-      .tab { padding: 0.5rem 0.8rem; border: 1px solid #ccc; border-bottom: none; border-radius: 6px 6px 0 0; background: #f5f5f5; cursor: pointer; }
-      .tab.active { background: #ffffff; border-bottom: 1px solid white; }
-      .panel { display: none; border: 1px solid #ccc; padding: 1rem; border-radius: 0 6px 6px 6px; }
-      .panel.active { display: block; }
+      .tabs { flex: 0 0 auto; display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; margin: 0; padding: 10px 18px 0; background: #ffffff; border-bottom: 1px solid #e2e8f0; }
+      .tab { max-width: 260px; padding: 0.55rem 0.8rem; border: 1px solid #d6dbe6; border-bottom: none; border-radius: 6px 6px 0 0; background: #f8fafc; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #334155; }
+      .tab.active { background: #ffffff; border-color: #94a3b8; color: #0f172a; font-weight: 600; position: relative; top: 1px; }
+      .panel { display: none; min-height: 0; padding: 12px 18px 18px; flex: 1 1 auto; overflow: hidden; }
+      .panel.active { display: flex; flex-direction: column; }
       table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ddd; padding: 6px 8px; }
+      th, td { border: 1px solid #d9dee7; padding: 6px 8px; }
       table.nav-mode td { cursor: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cmVjdCB4PSI0IiB5PSIxMCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjQiIGZpbGw9IiMwMDAiLz48cmVjdCB4PSIxMCIgeT0iNCIgd2lkdGg9IjQiIGhlaWdodD0iMTYiIGZpbGw9IiMwMDAiLz48L3N2Zz4=") 12 12, crosshair; }
-      th { background: #f7f7f7; text-align: left; }
+      th { background: #f8fafc; text-align: left; }
       .actions { margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
       .nav-buttons { display: flex; gap: 8px; align-items: center; }
       .toolbar { display: flex; align-items: center; gap: 8px; }
@@ -60,11 +67,23 @@
       .filter-panel .actions { margin-top: 8px; display: flex; justify-content: flex-end; gap: 8px; }
       .row-marker, .col-marker, .corner-marker { background: #f1f4fa; font-weight: 600; text-align: center; }
       .row-marker { cursor: pointer; width: 40px; }
-      .col-marker { cursor: pointer; }
+      .col-marker { cursor: pointer; position: sticky; }
+      .col-resizer { position: absolute; top: 0; right: -3px; width: 7px; height: 100%; cursor: col-resize; z-index: 8; user-select: none; touch-action: none; }
+      .col-resizer::after { content: ''; position: absolute; top: 20%; bottom: 20%; left: 3px; width: 1px; background: transparent; }
+      .col-resizer:hover::after,
+      .col-resizer.resizing::after { background: #2563eb; }
+      .table-wrap.resizing-columns,
+      .table-wrap.resizing-columns * { cursor: col-resize !important; user-select: none; }
       .corner-marker { position: relative; }
       .corner-marker.select-all { cursor: pointer; }
       .corner-marker.select-all::after { content: ''; width: 0; height: 0; border-left: 10px solid transparent; border-bottom: 10px solid #1f6feb; position: absolute; right: 4px; bottom: 4px; opacity: 0.8; }
-      .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid #ddd; border-radius: 6px; }
+      .table-wrap { overflow: auto; flex: 1 1 auto; min-height: 0; border: 1px solid #cfd6e3; border-radius: 6px; background: #fff; }
+      .table-wrap table { min-width: max-content; }
+      .table-wrap thead th { position: sticky; top: 0; z-index: 4; }
+      .table-wrap thead tr[data-role="data-header"] th { top: 34px; z-index: 4; }
+      .table-wrap .corner-marker,
+      .table-wrap .row-marker { position: sticky; left: 0; z-index: 5; }
+      .table-wrap thead .corner-marker { z-index: 6; }
       .selected-row td, .selected-row th { background: #fff6da !important; }
       td.col-selected, th.col-selected { background: #e9f3ff !important; }
       .selection-status { display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem; }
@@ -84,6 +103,19 @@
       .sheet-selector-panel label { display: flex; gap: 8px; align-items: center; font-size: 0.85rem; color: #333; padding: 4px 0; }
       .advanced-pane .sheet-selector { margin-bottom: 10px; }
       .advanced-pane .btn.primary { margin-top: 10px; }
+      .export-modal-backdrop { position: fixed; inset: 0; z-index: 2000; background: rgba(15, 23, 42, 0.36); display: none; align-items: center; justify-content: center; padding: 24px; }
+      .export-modal-backdrop.open { display: flex; }
+      .export-modal { width: min(460px, 100%); background: #fff; border: 1px solid #d5dce8; border-radius: 8px; box-shadow: 0 20px 52px rgba(15,23,42,0.25); }
+      .export-modal header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid #e2e8f0; }
+      .export-modal h2 { margin: 0; font-size: 1.05rem; }
+      .modal-close { border: none; background: transparent; cursor: pointer; width: 32px; height: 32px; border-radius: 6px; font-size: 1.25rem; line-height: 1; color: #475569; }
+      .modal-close:hover { background: #f1f5f9; }
+      .export-modal-body { padding: 14px 18px; }
+      .export-sheet-list { max-height: 280px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; }
+      .export-sheet-list label { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-radius: 6px; font-size: 0.92rem; }
+      .export-sheet-list label:hover { background: #f8fafc; }
+      .export-modal-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-top: 1px solid #e2e8f0; }
+      .export-count { font-size: 0.85rem; color: #64748b; }
       .menu-tabs { display: flex; border: 1px solid #d2d9eb; border-radius: 999px; overflow: hidden; }
       .menu-tab { flex: 1; text-align: center; padding: 6px 0; font-size: 0.85rem; cursor: pointer; background: #fff; color: #536081; border-right: 1px solid #d2d9eb; }
       .menu-tab:last-child { border-right: none; }
@@ -91,10 +123,10 @@
       .menu-pane { display: none; flex-direction: column; gap: 14px; }
       .menu-pane.active { display: flex; }
       .advanced-placeholder { font-size: 0.85rem; color: #6a7085; line-height: 1.4; background: #fff; border: 1px dashed #c7cfe4; padding: 10px; border-radius: 8px; }
-      .control-stack { display: flex; flex-direction: column; gap: 16px; }
-      .control-block { background: #ffffff; border: 1px solid #e6e9fb; border-radius: 12px; padding: 14px; box-shadow: 0 6px 18px rgba(28,38,90,0.08); display: flex; flex-direction: column; }
+      .control-stack { display: flex; flex-direction: column; gap: 10px; }
+      .control-block { background: #ffffff; border: 1px solid #e1e7f0; border-radius: 8px; padding: 12px; box-shadow: none; display: flex; flex-direction: column; }
       .control-block > * + * { margin-top: 12px; }
-      .control-block h4 { margin: 0; font-size: 0.95rem; color: #1e315f; }
+      .control-block h4 { margin: 0; font-size: 0.9rem; color: #1e315f; }
       .control-block.subtle { background: #eff2ff; border-color: #dfe5ff; box-shadow: none; color: #4b5aa3; }
       .control-block input,
       .control-block select { width: 100%; padding: 8px 10px; border: 1px solid #cfd4f2; border-radius: 8px; background: #fff; }
@@ -112,6 +144,16 @@
       .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
       .lang .switch a:last-child { border-right: none; }
       .lang .switch a.active { background: #2266ee; color: #fff; }
+      .panel-title { margin: 0 0 10px; font-size: 1rem; line-height: 1.35; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      @media (max-width: 900px) {
+        body { overflow: auto; }
+        .layout { grid-template-columns: 1fr; height: auto; min-height: 100vh; }
+        .layout.sidebar-collapsed { grid-template-columns: 1fr; }
+        .sidebar { height: auto; max-height: none; border-right: none; border-bottom: 1px solid #d8dee9; }
+        .content-area { height: auto; min-height: 70vh; }
+        .workspace-header { grid-template-columns: 1fr; }
+        .panel.active { min-height: 70vh; }
+      }
     </style>
   </head>
   <body>
@@ -190,15 +232,6 @@
         </div>
         <div class="menu-pane advanced-pane" data-global-pane="advanced">
           <div class="control-stack">
-            <div class="control-block">
-              <h4>{{ t('advanced_export_heading') }}</h4>
-              <div class="sheet-selector">
-                <button class="btn secondary" type="button" data-role="sheet-select-toggle">{{ t('advanced_select_sheets') }} ?</button>
-                <div class="sheet-selector-panel" data-role="sheet-select-panel"></div>
-              </div>
-              <button class="btn primary" type="button" data-action="export-selected">{{ t('export_selected') }}</button>
-              <p class="note">{{ t('advanced_export_hint') }}</p>
-            </div>
             <div class="control-block subtle">
               <div class="advanced-placeholder">{{ t('advanced_placeholder') }}</div>
             </div>
@@ -206,16 +239,25 @@
         </div>
       </aside>
       <div class="content-area">
-        <div class="toolbar" style="justify-content: flex-end;">
-          <div class="lang">
-            <div class="switch">
-              {% set next_url = url_for('select', token=token) %}
-              <a href="{{ url_for('set_lang_route', lang='en', next=next_url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
-              <a href="{{ url_for('set_lang_route', lang='vi', next=next_url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+        <header class="workspace-header">
+          <div class="workspace-title">
+            <h1>{{ t('selected_sheets') }}</h1>
+            <div class="subtitle" data-role="active-sheet-label">
+              {% if views %}{{ views[0].label }}{% endif %}
             </div>
           </div>
-        </div>
-        <h1>{{ t('selected_sheets') }}</h1>
+          <div class="workspace-actions">
+            <button class="btn secondary" type="button" data-action="clear-filters-global">{{ t('clear_filters') }}</button>
+            <button class="btn primary" type="button" data-action="open-export-modal">Export</button>
+            <div class="lang">
+              <div class="switch">
+                {% set next_url = url_for('select', token=token) %}
+                <a href="{{ url_for('set_lang_route', lang='en', next=next_url) }}" class="{% if current_lang == 'en' %}active{% endif %}">ENG</a>
+                <a href="{{ url_for('set_lang_route', lang='vi', next=next_url) }}" class="{% if current_lang == 'vi' %}active{% endif %}">VIE</a>
+              </div>
+            </div>
+          </div>
+        </header>
 
         <div class="tabs" id="tabs">
           {% for v in views %}
@@ -269,6 +311,25 @@
       </div>
     </div>
 
+    <div class="export-modal-backdrop" data-role="export-modal" aria-hidden="true">
+      <div class="export-modal" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+        <header>
+          <h2 id="exportModalTitle">Export</h2>
+          <button class="modal-close" type="button" data-action="close-export-modal" aria-label="{{ t('back') }}">×</button>
+        </header>
+        <div class="export-modal-body">
+          <div class="export-sheet-list" data-role="export-sheet-list"></div>
+        </div>
+        <div class="export-modal-footer">
+          <span class="export-count" data-role="export-count"></span>
+          <div class="toolbar">
+            <button class="btn secondary" type="button" data-action="close-export-modal">{{ t('back') }}</button>
+            <button class="btn primary" type="button" data-action="export-selected">{{ t('export_selected') }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       const tabs = document.querySelectorAll('.tab');
       const panels = document.querySelectorAll('.panel');
@@ -288,11 +349,13 @@
       const deleteBlanksGlobalBtn = document.querySelector('[data-action="delete-blanks-global"]');
       const colorInputGlobal = document.querySelector('[data-role="color-input-global"]');
       const applyColorGlobalBtn = document.querySelector('[data-action="apply-color-global"]');
-      const sheetSelectToggle = document.querySelector('[data-role="sheet-select-toggle"]');
-      const sheetSelectPanel = document.querySelector('[data-role="sheet-select-panel"]');
+      const exportModal = document.querySelector('[data-role="export-modal"]');
+      const exportSheetList = document.querySelector('[data-role="export-sheet-list"]');
+      const exportCount = document.querySelector('[data-role="export-count"]');
       const searchTermGlobal = document.querySelector('[data-role="search-term-global"]');
       const replaceTermGlobal = document.querySelector('[data-role="replace-term-global"]');
       const searchStatusGlobal = document.querySelector('[data-role="search-status-global"]');
+      const activeSheetLabel = document.querySelector('[data-role="active-sheet-label"]');
       const findNextGlobalBtn = document.querySelector('[data-action="find-next-global"]');
       const replaceGlobalBtn = document.querySelector('[data-action="replace-global"]');
       const replaceAllGlobalBtn = document.querySelector('[data-action="replace-all-global"]');
@@ -308,6 +371,18 @@
 
       document.querySelectorAll('[data-action="export-selected"]').forEach(btn=>{
         btn.addEventListener('click', exportSelected);
+      });
+      document.querySelectorAll('[data-action="open-export-modal"]').forEach(btn=>{
+        btn.addEventListener('click', openExportModal);
+      });
+      document.querySelectorAll('[data-action="close-export-modal"]').forEach(btn=>{
+        btn.addEventListener('click', closeExportModal);
+      });
+      exportModal?.addEventListener('click', ev=>{
+        if(ev.target === exportModal) closeExportModal();
+      });
+      document.addEventListener('keydown', ev=>{
+        if(ev.key === 'Escape' && exportModal?.classList.contains('open')) closeExportModal();
       });
 
       tabs.forEach(tab => {
@@ -351,6 +426,12 @@
       clearFiltersGlobalBtn?.addEventListener('click',()=>{
         activePanel?.querySelector('[data-action="clear-filters"]')?.click();
       });
+      document.querySelectorAll('[data-action="clear-filters-global"]').forEach(btn=>{
+        if(btn === clearFiltersGlobalBtn) return;
+        btn.addEventListener('click',()=>{
+          activePanel?.querySelector('[data-action="clear-filters"]')?.click();
+        });
+      });
       deleteRowsGlobalBtn?.addEventListener('click',()=>{
         activePanel?.querySelector('[data-action="delete-rows"]')?.click();
       });
@@ -374,11 +455,14 @@
 
       initPanels();
       setupMenuTabs();
-      setupSheetSelectors();
+      populateExportSheetList();
       syncGlobalControls();
 
       function syncGlobalControls(){
         if(!activePanel) return;
+        if(activeSheetLabel){
+          activeSheetLabel.textContent = activePanel.getAttribute('data-label') || '';
+        }
         const sheetInput = activePanel.querySelector('[data-role="sheet-name"]');
         if(sheetNameGlobal && sheetInput){
           sheetNameGlobal.value = sheetInput.value;
@@ -831,7 +915,10 @@
         const payload = { filename: 'export.xlsx', sheets: selected };
         fetch('{{ url_for('export_excel') }}', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+          },
           body: JSON.stringify(payload)
         }).then(resp => {
           if (!resp.ok) throw new Error('Export failed');
@@ -845,6 +932,44 @@
           URL.revokeObjectURL(url);
           a.remove();
         }).catch(()=> alert('Export failed'));
+      }
+
+      function openExportModal(){
+        populateExportSheetList();
+        exportModal?.classList.add('open');
+        exportModal?.setAttribute('aria-hidden','false');
+      }
+
+      function closeExportModal(){
+        exportModal?.classList.remove('open');
+        exportModal?.setAttribute('aria-hidden','true');
+      }
+
+      function populateExportSheetList(){
+        if(!exportSheetList) return;
+        exportSheetList.innerHTML='';
+        panels.forEach(panel=>{
+          const label=document.createElement('label');
+          const box=document.createElement('input');
+          box.type='checkbox';
+          box.className='export-sheet';
+          box.dataset.sheet=panel.id;
+          box.checked=sheetSelection.has(panel.id);
+          box.addEventListener('change',()=>{
+            if(box.checked) sheetSelection.add(panel.id); else sheetSelection.delete(panel.id);
+            updateExportCount();
+          });
+          const text=document.createElement('span');
+          text.textContent=panel.dataset.label || panel.id;
+          label.appendChild(box);
+          label.appendChild(text);
+          exportSheetList.appendChild(label);
+        });
+        updateExportCount();
+      }
+
+      function updateExportCount(){
+        if(exportCount) exportCount.textContent = `${sheetSelection.size}/${panels.length} sheet`;
       }
 
       function extractTable(panel) {
@@ -901,41 +1026,6 @@
         });
       }
 
-      let sheetSelectorDocListenerBound = false;
-      function setupSheetSelectors(){
-        if(!sheetSelectToggle || !sheetSelectPanel) return;
-        populateSheetSelectorPanel();
-        sheetSelectToggle.addEventListener('click',(ev)=>{
-          ev.stopPropagation();
-          const open = sheetSelectPanel.style.display==='block';
-          sheetSelectPanel.style.display = open ? 'none' : 'block';
-        });
-        sheetSelectPanel.addEventListener('click',(ev)=>ev.stopPropagation());
-        if(!sheetSelectorDocListenerBound){
-          document.addEventListener('click',()=>{ sheetSelectPanel.style.display='none'; });
-          sheetSelectorDocListenerBound = true;
-        }
-      }
-
-      function populateSheetSelectorPanel(){
-        if(!sheetSelectPanel) return;
-        sheetSelectPanel.innerHTML='';
-        panels.forEach(panel=>{
-          const label=document.createElement('label');
-          const box=document.createElement('input');
-          box.type='checkbox';
-          box.className='export-sheet';
-          box.dataset.sheet=panel.id;
-          box.checked=sheetSelection.has(panel.id);
-          box.addEventListener('change',()=>{
-            if(box.checked) sheetSelection.add(panel.id); else sheetSelection.delete(panel.id);
-          });
-          label.appendChild(box);
-          label.appendChild(document.createTextNode(' '+(panel.dataset.label || panel.id)));
-          sheetSelectPanel.appendChild(label);
-        });
-      }
-
       function setupSheetNameBinding(panel){
         const input=panel.querySelector('[data-role="sheet-name"]');
         const title=panel.querySelector('.panel-title');
@@ -947,6 +1037,9 @@
           }
           if(activePanel === panel && sheetNameGlobal){
             sheetNameGlobal.value = input.value;
+          }
+          if(activePanel === panel && activeSheetLabel){
+            activeSheetLabel.textContent = input.value.trim() || panel.getAttribute('data-label') || '';
           }
         });
       }
@@ -961,6 +1054,7 @@
         const deleteBlankBtn = panel.querySelector('[data-action="delete-blanks"]');
         stripEnhancements(table);
         addRowColMarkers(table);
+        attachColumnResizers(table);
         setupFilters(table, summary);
         attachSelectionHandlers(table, rowInput, colInput, deleteRowsBtn, deleteColsBtn, deleteBlankBtn);
         attachCellSelection(table);
@@ -1064,7 +1158,12 @@
         const headerCorner=document.createElement('th'); headerCorner.className='corner-marker'; dataHeader.insertBefore(headerCorner, dataHeader.firstChild);
         const colCount=dataHeader.cells.length-1;
         for(let c=0;c<colCount;c++){
-          const th=document.createElement('th'); th.className='col-marker'; th.dataset.colIndex=c; th.textContent=columnLabel(c); markerRow.appendChild(th);
+          const th=document.createElement('th'); th.className='col-marker'; th.dataset.colIndex=c; th.textContent=columnLabel(c);
+          const resizer=document.createElement('span');
+          resizer.className='col-resizer';
+          resizer.dataset.colIndex=c;
+          th.appendChild(resizer);
+          markerRow.appendChild(th);
         }
         Array.from(table.tBodies[0].rows).forEach((row, idx)=>{
           const marker=document.createElement('th'); marker.className='row-marker'; marker.dataset.rowIndex=idx; marker.textContent=idx+1; row.insertBefore(marker, row.firstChild);
@@ -1080,6 +1179,7 @@
         if(header && !header.dataset.role) header.dataset.role='data-header';
         if(header){
           header.querySelectorAll('.filter-btn').forEach(btn=>btn.remove());
+          header.querySelectorAll('.col-resizer').forEach(handle=>handle.remove());
           const firstCell=header.cells[0];
           if(firstCell && firstCell.classList.contains('corner-marker')) header.deleteCell(0);
         }
@@ -1095,6 +1195,75 @@
         table._selectedCols=new Set();
         table._selectedCells=new Set();
         delete table.dataset.cellSelectionBound;
+      }
+      function attachColumnResizers(table){
+        const markerRow=table.tHead?.querySelector('tr[data-role="marker-row"]');
+        if(!markerRow) return;
+        markerRow.querySelectorAll('.col-resizer').forEach(handle=>{
+          handle.addEventListener('click', ev=>ev.stopPropagation());
+          handle.addEventListener('mousedown', ev=>startColumnResize(ev, table));
+          handle.addEventListener('touchstart', ev=>startColumnResize(ev, table), {passive:false});
+        });
+      }
+      function startColumnResize(ev, table){
+        ev.preventDefault();
+        ev.stopPropagation();
+        const handle=ev.currentTarget;
+        const colIdx=parseInt(handle.dataset.colIndex,10);
+        if(Number.isNaN(colIdx)) return;
+        const startX=getPointerX(ev);
+        const startWidth=getColumnWidth(table, colIdx);
+        const wrap=table.closest('.table-wrap');
+        handle.classList.add('resizing');
+        wrap?.classList.add('resizing-columns');
+        function onMove(moveEv){
+          moveEv.preventDefault();
+          const width=Math.max(48, startWidth + getPointerX(moveEv) - startX);
+          setColumnWidth(table, colIdx, width);
+        }
+        function onEnd(){
+          handle.classList.remove('resizing');
+          wrap?.classList.remove('resizing-columns');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onEnd);
+          document.removeEventListener('touchmove', onMove);
+          document.removeEventListener('touchend', onEnd);
+          document.removeEventListener('touchcancel', onEnd);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchmove', onMove, {passive:false});
+        document.addEventListener('touchend', onEnd);
+        document.addEventListener('touchcancel', onEnd);
+      }
+      function getPointerX(ev){
+        const touch=ev.touches && ev.touches[0] ? ev.touches[0] : null;
+        const changed=ev.changedTouches && ev.changedTouches[0] ? ev.changedTouches[0] : null;
+        return (touch || changed || ev).clientX;
+      }
+      function getColumnWidth(table, colIdx){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const header=table.tHead?.querySelector('tr[data-role="data-header"]');
+        const cell=header?.cells[colIdx+offset];
+        return cell ? cell.getBoundingClientRect().width : 96;
+      }
+      function setColumnWidth(table, colIdx, width){
+        const offset=parseInt(table.dataset.markerOffset || '0',10);
+        const px=`${Math.round(width)}px`;
+        const marker=table.tHead?.querySelector(`.col-marker[data-col-index="${colIdx}"]`);
+        if(marker) applyCellWidth(marker, px);
+        const header=table.tHead?.querySelector('tr[data-role="data-header"]');
+        if(header?.cells[colIdx+offset]) applyCellWidth(header.cells[colIdx+offset], px);
+        const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        rows.forEach(row=>{
+          const cell=row.cells[colIdx+offset];
+          if(cell) applyCellWidth(cell, px);
+        });
+      }
+      function applyCellWidth(cell, width){
+        cell.style.width=width;
+        cell.style.minWidth=width;
+        cell.style.maxWidth=width;
       }
       function collectUnique(table){
         const offset=parseInt(table.dataset.markerOffset || '0',10);

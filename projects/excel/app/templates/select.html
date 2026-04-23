@@ -39,11 +39,19 @@
       </div>
       <h1>{{ t('select_file_and_sheet') }}</h1>
       <form action="{{ url_for('render_multi') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <input type="hidden" name="token" value="{{ token }}" />
         {% for f in files %}
           <div class="card">
             <h3>{{ f.filename }}</h3>
             <div class="body">
+              {% if f.ext == 'csv' and f.csv_meta %}
+                <p class="sheet">
+                  {{ t('csv_detected') }}:
+                  {{ t('csv_encoding') }} {{ f.csv_meta.encoding }},
+                  {{ t('csv_delimiter') }} "{{ f.csv_meta.delimiter }}"
+                </p>
+              {% endif %}
               <div class="file-actions">
                 <button type="button" data-file="{{ f.filename }}" data-action="select">{{ t('select_all_sheets') }}</button>
                 <button type="button" data-file="{{ f.filename }}" data-action="clear">{{ t('clear_file_selection') }}</button>
