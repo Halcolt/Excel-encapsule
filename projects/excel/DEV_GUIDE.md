@@ -1,63 +1,68 @@
-- Filters: per-column dropdown (?) opens a searchable, multi-select list of distinct values; supports filtering blanks; multiple columns can be filtered together
-# Excel Viewer – Developer Guide
+# Excel Viewer - Developer Guide
 
-Purpose
-- Provide a simple web UI for viewing Excel/CSV, light editing in the browser, and exporting to `.xlsx`.
+## Purpose
+- Provide a simple web UI for viewing Excel/CSV, making light edits in the browser, and exporting to `.xlsx`
 
-Stack
-- Flask (app), Gunicorn (server), pandas/openpyxl (parse/export), HTML templates (no heavy front‑end)
+## Stack
+- Flask for the web app
+- Gunicorn for container serving
+- pandas and openpyxl for parsing/export
+- Server-rendered HTML templates with minimal client-side JavaScript
 
-Run
+## Run
 - `cd projects/excel`
 - `docker compose up --build`
 - Open `http://localhost:8080`
 
-Config (env)
-- `PORT` (default 8000)
-- `MAX_UPLOAD_MB` (default 16)
-- `UPLOAD_TTL_HOURS` (default 24)
-- `FLASK_SECRET_KEY` (default `dev` – set in production)
+## Config
+- `PORT` default `8000`
+- `MAX_UPLOAD_MB` default `16`
+- `UPLOAD_TTL_HOURS` default `24`
+- `FLASK_SECRET_KEY` default `dev`
 
-Features
+## Current Feature Set
 - Upload multiple files
-- Per-file �Select all sheets / Clear� controls on the selection screen
+- Per-file sheet selection helpers
 - Select multiple sheets across files
-- Tabbed viewing of selected sheets with Excel-style row/column markers, Home shortcut, and Ctrl multi-select rows/columns (selection readouts)
-- Inline edits (contentEditable) on table cells
-- Export selected sheets to `.xlsx`
-- i18n (EN/VI) with ENG/VIE pill switch
-- Filters: per-column dropdown (▾) opens a searchable, multi-select list of distinct values; supports filtering blanks; multiple columns can be filtered together
-- Large tables scroll in-panel (no page overflow)
+- Tabbed viewing with row/column selection markers
+- Inline cell editing in the browser table
+- Export selected sheets to a newly generated `.xlsx`
+- ENG/VIE language switch
+- Searchable per-column filters with blank support
+- Row/column cleanup actions
+- Scrollable table container
+- Column format presets for export are in progress only
 
-Routes
-- `GET /` – upload UI (client-side add/remove files)
-- `POST /upload` – saves files under a token (temp dir)
-- `GET /select/<token>` – choose sheets across uploaded files
-- `POST /render_multi` – render selected sheets in tabs (editable)
-- `POST /export` – returns generated `.xlsx` built from edited tables
-- `GET /set-lang/<lang>` – switch language; safe redirect to a GET route
+## Important Limitations
+- The browser grid is text-first HTML, not a workbook-preserving Excel model
+- Format presets currently affect export only; they do not live-preview formatted values in the browser grid
+- Export builds a new workbook from the edited browser state instead of patching the original workbook
+- This app should be treated as a data editor, not a VBA-preserving workbook editor
 
-Internals
-- Temp uploads root: under system temp or `UPLOAD_ROOT` env; per upload token
-- Cleanup: daemon thread removes token directories older than `UPLOAD_TTL_HOURS`
-- Export: builds Excel in‑memory with `openpyxl` via `pandas.ExcelWriter`
-- Sheet names are sanitized and deduplicated
-- Rendering: DataFrames are blank-normalized (`fillna("")`) and `to_html(..., na_rep="")` to avoid “NaN” display
+## Routes
+- `GET /` upload UI
+- `POST /upload` save files under a temporary token directory
+- `GET /select/<token>` choose sheets across uploaded files
+- `POST /render_multi` render selected sheets in tabs
+- `POST /export` generate an `.xlsx` from the current browser payload
+- `GET /set-lang/<lang>` switch UI language
 
-I18n
-- Translations live in `app/i18n/en.json` and `app/i18n/vi.json`
-- `t(key)` is injected into templates via a context processor
+## Internals
+- Temp uploads live under `UPLOAD_ROOT` or the system temp directory
+- A daemon cleanup thread removes expired token directories
+- Rendering normalizes blanks with `fillna("")` and `na_rep=""`
+- Excel metadata inference captures source type and original number format for export helpers
+- Read-only workbook metadata scanning must stay row-streamed to avoid `openpyxl` performance regressions
 
-Future Refactor (clean architecture)
-- Introduce services and ports (storage/parser/export) with adapters
-- App factory + Blueprint for web routes
-- Add CSRF tokens; optional auth; CSV encoding/delimiter detection; drag‑drop
+## Testing
+- `pytest projects/excel/tests -q`
+- Current automated coverage focuses on:
+  - sheet-name sanitization
+  - workbook metadata extraction
+  - upload/select/render/export route smoke tests
+- Tests should generate small workbook fixtures in code instead of depending on the checked-in demo workbook
 
-Testing
-- Add unit tests for export shape and sheet name sanitization
-- Route smoke tests for upload/select/render/export
-
-Dev Loop
-- Auto-reload service `dev` is available:
-  - `docker compose up -d dev` (from `projects/excel`)
-  - Edits in `app/` reload Gunicorn; rebuild when dependencies change
+## Suggested Next Work
+- Keep stabilizing route and export behavior with more tests before adding new spreadsheet semantics
+- Revisit format-presets only after the current export contract is documented and covered by tests
+- If workbook fidelity or VBA support becomes a real requirement, treat that as a separate architecture track

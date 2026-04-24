@@ -247,20 +247,27 @@ def _build_excel_column_metadata(path: Path, sheet_name: str, df: pd.DataFrame) 
     workbook = load_workbook(path, data_only=False, read_only=True)
     try:
         sheet = workbook[sheet_name]
-        metadata: list[dict] = []
-        for col_idx, column_name in enumerate(df.columns, start=1):
-            source_types: list[str] = []
-            number_formats: list[str] = []
-            for row_idx in range(2, sheet.max_row + 1):
-                cell = sheet.cell(row=row_idx, column=col_idx)
+        column_count = len(df.columns)
+        source_type_buckets: list[list[str]] = [[] for _ in range(column_count)]
+        number_format_buckets: list[list[str]] = [[] for _ in range(column_count)]
+
+        # Read-only worksheets are efficient when streamed row-by-row, but very slow
+        # with repeated random-access `sheet.cell(...)` lookups.
+        for row in sheet.iter_rows(min_row=2, max_col=column_count):
+            for col_idx, cell in enumerate(row):
                 if cell.value is None:
                     continue
                 cell_type = _infer_excel_cell_type(cell)
                 if cell_type:
-                    source_types.append(cell_type)
+                    source_type_buckets[col_idx].append(cell_type)
                 fmt = cell.number_format or ""
                 if fmt and fmt != "General":
-                    number_formats.append(fmt)
+                    number_format_buckets[col_idx].append(fmt)
+
+        metadata: list[dict] = []
+        for col_idx, column_name in enumerate(df.columns, start=1):
+            source_types = source_type_buckets[col_idx - 1]
+            number_formats = number_format_buckets[col_idx - 1]
             source_type = Counter(source_types).most_common(1)[0][0] if source_types else _infer_series_type(df.iloc[:, col_idx - 1])
             original_number_format = (
                 Counter(number_formats).most_common(1)[0][0]
