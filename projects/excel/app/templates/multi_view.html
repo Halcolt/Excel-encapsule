@@ -203,6 +203,19 @@
                 <label>{{ t('selected_columns') }}<input type="text" data-role="col-input-global" readonly></label>
               </div>
             </div>
+            <div class="control-block">
+              <h4>{{ t('column_format_heading') }}</h4>
+              <div class="search-control">
+                <select data-role="column-format-select-global" disabled>
+                  <option value="__mixed__">{{ t('format_mixed') }}</option>
+                  {% for preset in column_format_presets %}
+                    <option value="{{ preset.id }}">{{ t(preset.label_key) }}</option>
+                  {% endfor %}
+                </select>
+                <button class="btn secondary" type="button" data-action="apply-column-format-global" disabled>{{ t('apply_column_format') }}</button>
+                <div class="note">{{ t('column_format_hint') }}</div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="menu-pane advanced-pane" data-global-pane="advanced">
@@ -255,7 +268,7 @@
         </div>
 
         {% for v in views %}
-          <div class="panel{% if loop.first %} active{% endif %}" id="{{ v.id }}" data-filename="{{ v.filename }}" data-sheet="{{ v.sheet_name or '' }}" data-label="{{ v.label }}">
+          <div class="panel{% if loop.first %} active{% endif %}" id="{{ v.id }}" data-filename="{{ v.filename }}" data-sheet="{{ v.sheet_name or '' }}" data-label="{{ v.label }}" data-column-meta="{{ v.column_metadata|tojson|forceescape }}">
             <h2 class="panel-title" style="margin-top:0">{{ v.label }}</h2>
             <div class="table-wrap">{{ v.table_html|safe }}</div>
             <div class="panel-hidden-controls">
@@ -369,6 +382,8 @@
       const findNextGlobalBtn = document.querySelector('[data-action="find-next-global"]');
       const replaceGlobalBtn = document.querySelector('[data-action="replace-global"]');
       const replaceAllGlobalBtn = document.querySelector('[data-action="replace-all-global"]');
+      const formatSelectGlobal = document.querySelector('[data-role="column-format-select-global"]');
+      const applyColumnFormatGlobalBtn = document.querySelector('[data-action="apply-column-format-global"]');
 
       collapseToggle?.addEventListener('click',()=>{
         if(!sidebarEl) return;
@@ -475,6 +490,10 @@
       applyColorGlobalBtn?.addEventListener('click',()=>{
         activePanel?.querySelector('[data-action="apply-color"]')?.click();
       });
+      applyColumnFormatGlobalBtn?.addEventListener('click',()=>{
+        const table = getPanelTable(activePanel);
+        if(table) applySelectedColumnFormat(activePanel, table);
+      });
       findNextGlobalBtn?.addEventListener('click', handleFindNext);
       replaceGlobalBtn?.addEventListener('click', handleReplace);
       replaceAllGlobalBtn?.addEventListener('click', handleReplaceAll);
@@ -574,6 +593,8 @@
           deleteRowsGlobalBtn?.setAttribute('disabled','disabled');
           deleteColsGlobalBtn?.setAttribute('disabled','disabled');
           deleteBlanksGlobalBtn?.setAttribute('disabled','disabled');
+          if(formatSelectGlobal) formatSelectGlobal.disabled = true;
+          if(applyColumnFormatGlobalBtn) applyColumnFormatGlobalBtn.disabled = true;
           if(undoTableBtn) undoTableBtn.disabled = true;
           return;
         }
@@ -583,6 +604,7 @@
         if(deleteRowsGlobalBtn) deleteRowsGlobalBtn.disabled = rowsBtn ? rowsBtn.disabled : true;
         if(deleteColsGlobalBtn) deleteColsGlobalBtn.disabled = colsBtn ? colsBtn.disabled : true;
         if(deleteBlanksGlobalBtn) deleteBlanksGlobalBtn.disabled = blanksBtn ? blanksBtn.disabled : true;
+        updateColumnFormatControls(activePanel);
         updateUndoButton(activePanel);
       }
 
@@ -599,7 +621,10 @@
           return;
         }
         panel._tableUndoStack = panel._tableUndoStack || [];
-        panel._tableUndoStack.push(table.outerHTML);
+        panel._tableUndoStack.push({
+          html: table.outerHTML,
+          columnFormats: cloneColumnFormats(panel._columnFormatMeta || []),
+        });
         if(panel._tableUndoStack.length > 20){
           panel._tableUndoStack.shift();
         }
@@ -619,7 +644,9 @@
           return false;
         }
         const snapshot = panel._tableUndoStack.pop();
-        wrap.innerHTML = snapshot;
+        const html = typeof snapshot === 'string' ? snapshot : snapshot?.html;
+        wrap.innerHTML = html || '';
+        panel._columnFormatMeta = cloneColumnFormats(snapshot?.columnFormats || []);
         const restored = getPanelTable(panel);
         if(restored){
           bindTableEditing(restored);
@@ -1154,7 +1181,12 @@
         const custom = nameInput ? nameInput.value.trim() : '';
         const label = panel.getAttribute('data-label') || '';
         const base = (custom || sheet || label || fname.replace(/\.[^/.]+$/, '') || 'Sheet').trim();
-        return { headers, rows, name: base };
+        const columnFormats = headers.map((header, idx) => {
+          const meta = normalizeColumnFormatMeta((panel._columnFormatMeta || [])[idx] || {});
+          meta.header = header;
+          return meta;
+        });
+        return { headers, rows, name: base, column_formats: columnFormats };
       }
 
       function initPanels(){
@@ -1283,6 +1315,7 @@
         const deleteBlankBtn = panel.querySelector('[data-action="delete-blanks"]');
         stripEnhancements(table);
         addRowColMarkers(table);
+        ensurePanelColumnFormats(panel, table);
         attachColumnResizers(table);
         setupFilters(table, summary);
         setFiltersVisible(document.querySelector('[data-role="filter-toggle"]')?.checked !== false);
@@ -1315,11 +1348,87 @@
         const offset=parseInt(table.dataset.markerOffset || '0',10);
         const header=table.tHead.querySelector('tr[data-role="data-header"]');
         const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
+        const nextFormats = Array.isArray(panel._columnFormatMeta) ? panel._columnFormatMeta.slice() : [];
         Array.from(table._selectedCols).sort((a,b)=>b-a).forEach(colIdx=>{
           header?.cells[colIdx+offset]?.remove();
           rows.forEach(row=>row.cells[colIdx+offset]?.remove());
+          nextFormats.splice(colIdx, 1);
         });
+        panel._columnFormatMeta = nextFormats;
         initializePanel(panel, table);
+      }
+
+      function cloneColumnFormats(list){
+        return Array.isArray(list) ? list.map(item => ({...item})) : [];
+      }
+
+      function normalizeColumnFormatMeta(meta){
+        const item = meta && typeof meta === 'object' ? meta : {};
+        return {
+          header: item.header || '',
+          source_type: item.source_type || 'text',
+          original_number_format: item.original_number_format || 'General',
+          selected_preset: item.selected_preset || 'original',
+        };
+      }
+
+      function ensurePanelColumnFormats(panel, table){
+        if(!panel || !table) return [];
+        const header = table.tHead?.querySelector('tr[data-role="data-header"]');
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const count = header ? Math.max(0, header.cells.length - offset) : 0;
+        let base = Array.isArray(panel._columnFormatMeta) ? panel._columnFormatMeta.map(normalizeColumnFormatMeta) : null;
+        if(!base){
+          try {
+            base = JSON.parse(panel.dataset.columnMeta || '[]').map(normalizeColumnFormatMeta);
+          } catch (err) {
+            base = [];
+          }
+        }
+        while(base.length < count){
+          base.push(normalizeColumnFormatMeta({}));
+        }
+        panel._columnFormatMeta = base.slice(0, count);
+        return panel._columnFormatMeta;
+      }
+
+      function updateColumnFormatControls(panel){
+        const table = getPanelTable(panel);
+        const selectedCols = table? Array.from(table._selectedCols || []).sort((a,b)=>a-b) : [];
+        const hasSelection = selectedCols.length > 0;
+        if(formatSelectGlobal){
+          formatSelectGlobal.disabled = !hasSelection;
+        }
+        if(applyColumnFormatGlobalBtn){
+          applyColumnFormatGlobalBtn.disabled = !hasSelection;
+        }
+        if(!formatSelectGlobal){
+          return;
+        }
+        if(!hasSelection){
+          formatSelectGlobal.value = 'original';
+          return;
+        }
+        const formats = ensurePanelColumnFormats(panel, table);
+        const presets = selectedCols.map(idx => (formats[idx] || {}).selected_preset || 'original');
+        const first = presets[0];
+        formatSelectGlobal.value = presets.every(value => value === first) ? first : '__mixed__';
+      }
+
+      function applySelectedColumnFormat(panel, table){
+        if(!panel || !table || !formatSelectGlobal) return;
+        const preset = formatSelectGlobal.value;
+        if(!preset || preset === '__mixed__' || !table._selectedCols || table._selectedCols.size===0) return;
+        pushTableUndoSnapshot(panel, table);
+        const formats = ensurePanelColumnFormats(panel, table).slice();
+        Array.from(table._selectedCols).forEach(idx => {
+          const meta = normalizeColumnFormatMeta(formats[idx] || {});
+          meta.selected_preset = preset;
+          formats[idx] = meta;
+        });
+        panel._columnFormatMeta = formats;
+        updateColumnFormatControls(panel);
+        updateUndoButton(panel);
       }
 
       function handleDeleteBlankRows(panel, table){
@@ -1734,6 +1843,7 @@
           if(deleteRowsGlobalBtn) deleteRowsGlobalBtn.disabled = rows.length===0;
           if(deleteColsGlobalBtn) deleteColsGlobalBtn.disabled = cols.length===0;
           if(deleteBlanksGlobalBtn) deleteBlanksGlobalBtn.disabled = cols.length===0;
+          updateColumnFormatControls(activePanel);
           updateUndoButton(activePanel);
           resetSearchState(activePanel, true);
         }

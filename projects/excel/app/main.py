@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, g, send_file
 import pandas as pd
 from werkzeug.utils import secure_filename
+from openpyxl import Workbook, load_workbook
+from openpyxl.utils import get_column_letter
 import tempfile
 from pathlib import Path
 import uuid
@@ -15,7 +17,8 @@ import threading
 import time
 import csv
 import secrets
-from datetime import datetime, timedelta
+from collections import Counter
+from datetime import date, datetime, timedelta
 
 app = Flask(__name__)
 
@@ -52,6 +55,29 @@ if not logger.handlers:
 ALLOWED_EXTENSIONS = {"xlsx", "csv"}
 CSV_ENCODINGS = ("utf-8-sig", "utf-8", "cp1258", "cp1252", "latin1")
 CSV_DELIMITERS = [",", ";", "\t", "|"]
+COLUMN_FORMAT_PRESETS = (
+    {"id": "original", "label_key": "format_original"},
+    {"id": "text", "label_key": "format_text"},
+    {"id": "general", "label_key": "format_general"},
+    {"id": "integer", "label_key": "format_integer"},
+    {"id": "decimal_2", "label_key": "format_decimal_2"},
+    {"id": "percent_2", "label_key": "format_percent_2"},
+    {"id": "date_dmy", "label_key": "format_date_dmy"},
+    {"id": "date_mdy", "label_key": "format_date_mdy"},
+    {"id": "date_ymd", "label_key": "format_date_ymd"},
+    {"id": "datetime_dmy_hm", "label_key": "format_datetime_dmy_hm"},
+)
+PRESET_NUMBER_FORMATS = {
+    "text": "@",
+    "general": "General",
+    "integer": "0",
+    "decimal_2": "0.00",
+    "percent_2": "0.00%",
+    "date_dmy": "dd-mm-yyyy",
+    "date_mdy": "mm-dd-yyyy",
+    "date_ymd": "yyyy-mm-dd",
+    "datetime_dmy_hm": "dd-mm-yyyy hh:mm",
+}
 
 
 def allowed_file(filename: str) -> bool:
@@ -129,6 +155,263 @@ def read_csv_smart(path: Path) -> tuple[pd.DataFrame, dict[str, str]]:
             return max(parsed, key=lambda item: len(item[0].columns))
 
     raise last_error or ValueError("Could not read CSV file")
+
+
+def _normalize_cell_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float) and pd.isna(value):
+        return ""
+    return str(value)
+
+
+def _looks_like_datetime_format(fmt: str) -> bool:
+    fmt_lower = (fmt or "").lower()
+    return any(token in fmt_lower for token in ("h", "s", "am/pm"))
+
+
+def _looks_like_date_format(fmt: str) -> bool:
+    fmt_lower = (fmt or "").lower()
+    return any(token in fmt_lower for token in ("d", "m", "y")) and not any(
+        token in fmt_lower for token in ("0.00%", "#,##0", "@")
+    )
+
+
+def _infer_excel_cell_type(cell) -> str:
+    value = cell.value
+    fmt = cell.number_format or ""
+    if value is None:
+        return ""
+    if cell.is_date or isinstance(value, datetime):
+        return "datetime" if _looks_like_datetime_format(fmt) else "date"
+    if isinstance(value, date):
+        return "date"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        fmt_lower = fmt.lower()
+        if "%" in fmt:
+            return "percent"
+        if "[$" in fmt_lower or any(symbol in fmt for symbol in ("$", "€", "£", "¥", "₫")):
+            return "currency"
+        if isinstance(value, int) or (isinstance(value, float) and float(value).is_integer()):
+            return "integer"
+        return "decimal"
+    return "text"
+
+
+def _infer_series_type(series: pd.Series) -> str:
+    if series.empty:
+        return "text"
+    dtype = str(series.dtype).lower()
+    if "datetime" in dtype:
+        return "datetime"
+    if "int" in dtype:
+        return "integer"
+    if "float" in dtype or "double" in dtype:
+        return "decimal"
+    if "bool" in dtype:
+        return "boolean"
+    return "text"
+
+
+def _default_format_for_type(source_type: str) -> str:
+    return {
+        "date": "dd-mm-yyyy",
+        "datetime": "dd-mm-yyyy hh:mm",
+        "integer": "0",
+        "decimal": "0.00",
+        "percent": "0.00%",
+        "currency": "#,##0.00",
+        "text": "@",
+    }.get(source_type, "General")
+
+
+def _build_csv_column_metadata(df: pd.DataFrame) -> list[dict]:
+    metadata = []
+    for column_name in df.columns:
+        series = df[column_name] if column_name in df else pd.Series(dtype="object")
+        source_type = _infer_series_type(series)
+        metadata.append(
+            {
+                "header": _normalize_cell_text(column_name),
+                "source_type": source_type,
+                "original_number_format": _default_format_for_type(source_type),
+                "selected_preset": "original",
+            }
+        )
+    return metadata
+
+
+def _build_excel_column_metadata(path: Path, sheet_name: str, df: pd.DataFrame) -> list[dict]:
+    workbook = load_workbook(path, data_only=False, read_only=True)
+    try:
+        sheet = workbook[sheet_name]
+        metadata: list[dict] = []
+        for col_idx, column_name in enumerate(df.columns, start=1):
+            source_types: list[str] = []
+            number_formats: list[str] = []
+            for row_idx in range(2, sheet.max_row + 1):
+                cell = sheet.cell(row=row_idx, column=col_idx)
+                if cell.value is None:
+                    continue
+                cell_type = _infer_excel_cell_type(cell)
+                if cell_type:
+                    source_types.append(cell_type)
+                fmt = cell.number_format or ""
+                if fmt and fmt != "General":
+                    number_formats.append(fmt)
+            source_type = Counter(source_types).most_common(1)[0][0] if source_types else _infer_series_type(df.iloc[:, col_idx - 1])
+            original_number_format = (
+                Counter(number_formats).most_common(1)[0][0]
+                if number_formats
+                else _default_format_for_type(source_type)
+            )
+            metadata.append(
+                {
+                    "header": _normalize_cell_text(column_name),
+                    "source_type": source_type,
+                    "original_number_format": original_number_format,
+                    "selected_preset": "original",
+                }
+            )
+        return metadata
+    finally:
+        workbook.close()
+
+
+def _load_sheet_dataframe(path: Path, filename: str, sheet_name: str | None = None) -> tuple[pd.DataFrame, list[dict], str | None]:
+    ext = filename.rsplit(".", 1)[1].lower()
+    if ext == "csv":
+        df, _ = read_csv_smart(path)
+        df = df.fillna("")
+        return df, _build_csv_column_metadata(df), None
+
+    xls = pd.ExcelFile(path)
+    target_sheet = sheet_name or (xls.sheet_names[0] if xls.sheet_names else None)
+    if not target_sheet:
+        raise ValueError("No sheets found in the workbook.")
+    df = xls.parse(target_sheet).fillna("")
+    column_metadata = _build_excel_column_metadata(path, target_sheet, df)
+    return df, column_metadata, target_sheet
+
+
+def _parse_numeric_value(raw_value, allow_percent: bool = False):
+    text = _normalize_cell_text(raw_value).strip()
+    if not text:
+        return None
+    normalized = text.replace(",", "").replace(" ", "")
+    is_percent = normalized.endswith("%")
+    if is_percent:
+        normalized = normalized[:-1]
+    try:
+        number = float(normalized)
+    except ValueError:
+        return None
+    if allow_percent:
+        if is_percent or abs(number) > 1:
+            return number / 100
+        return number
+    if number.is_integer():
+        return int(number)
+    return number
+
+
+def _parse_datetime_value(raw_value, prefer_dayfirst: bool) -> datetime | None:
+    text = _normalize_cell_text(raw_value).strip()
+    if not text:
+        return None
+    explicit_formats = ["%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%m-%d-%Y", "%m/%d/%Y"]
+    explicit_datetimes = [
+        "%d-%m-%Y %H:%M",
+        "%d/%m/%Y %H:%M",
+        "%Y-%m-%d %H:%M",
+        "%m-%d-%Y %H:%M",
+        "%m/%d/%Y %H:%M",
+        "%d-%m-%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%m-%d-%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M:%S",
+    ]
+    ordered_formats = (explicit_datetimes + explicit_formats) if prefer_dayfirst else (
+        explicit_datetimes[2:] + explicit_datetimes[:2] + explicit_formats[2:] + explicit_formats[:2]
+    )
+    for fmt in ordered_formats:
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    parsed = pd.to_datetime(text, errors="coerce", dayfirst=prefer_dayfirst)
+    if pd.isna(parsed):
+        parsed = pd.to_datetime(text, errors="coerce", dayfirst=not prefer_dayfirst)
+    if pd.isna(parsed):
+        return None
+    return parsed.to_pydatetime()
+
+
+def _coerce_export_cell(raw_value, column_meta: dict) -> tuple[object, str]:
+    text = _normalize_cell_text(raw_value)
+    trimmed = text.strip()
+    preset = (column_meta or {}).get("selected_preset") or "original"
+    source_type = (column_meta or {}).get("source_type") or "text"
+    original_number_format = (column_meta or {}).get("original_number_format") or "General"
+
+    if trimmed == "":
+        return "", PRESET_NUMBER_FORMATS.get(preset, original_number_format)
+
+    if preset == "text":
+        return text, PRESET_NUMBER_FORMATS["text"]
+
+    if preset == "general":
+        parsed_number = _parse_numeric_value(trimmed)
+        return (parsed_number, "General") if parsed_number is not None else (text, "General")
+
+    if preset in {"integer", "decimal_2"}:
+        parsed_number = _parse_numeric_value(trimmed)
+        if parsed_number is None:
+            return text, PRESET_NUMBER_FORMATS[preset]
+        if preset == "integer":
+            parsed_number = int(round(float(parsed_number)))
+        return parsed_number, PRESET_NUMBER_FORMATS[preset]
+
+    if preset == "percent_2":
+        parsed_number = _parse_numeric_value(trimmed, allow_percent=True)
+        return (parsed_number, PRESET_NUMBER_FORMATS[preset]) if parsed_number is not None else (text, PRESET_NUMBER_FORMATS[preset])
+
+    if preset in {"date_dmy", "date_mdy", "date_ymd", "datetime_dmy_hm"}:
+        prefer_dayfirst = preset in {"date_dmy", "datetime_dmy_hm"}
+        parsed_dt = _parse_datetime_value(trimmed, prefer_dayfirst=prefer_dayfirst)
+        if parsed_dt is None:
+            return text, PRESET_NUMBER_FORMATS[preset]
+        if preset == "datetime_dmy_hm":
+            return parsed_dt, PRESET_NUMBER_FORMATS[preset]
+        return parsed_dt.date(), PRESET_NUMBER_FORMATS[preset]
+
+    if source_type in {"integer", "decimal", "currency"}:
+        parsed_number = _parse_numeric_value(trimmed)
+        return (parsed_number, original_number_format) if parsed_number is not None else (text, original_number_format)
+
+    if source_type == "percent":
+        parsed_number = _parse_numeric_value(trimmed, allow_percent=True)
+        return (parsed_number, original_number_format) if parsed_number is not None else (text, original_number_format)
+
+    if source_type in {"date", "datetime"}:
+        parsed_dt = _parse_datetime_value(trimmed, prefer_dayfirst=True)
+        if parsed_dt is None:
+            return text, original_number_format
+        if source_type == "datetime":
+            return parsed_dt, original_number_format
+        return parsed_dt.date(), original_number_format
+
+    if source_type == "boolean":
+        lowered = trimmed.lower()
+        if lowered in {"true", "yes", "1"}:
+            return True, "General"
+        if lowered in {"false", "no", "0"}:
+            return False, "General"
+
+    return text, original_number_format
 
 
 def _cleanup_old_tokens_loop():
@@ -342,24 +625,10 @@ def render_view():
         flash(tr("flash_selected_file_not_found"))
         return redirect(url_for("index"))
 
-    ext = filename.rsplit(".", 1)[1].lower()
-
     try:
-        if ext == "csv":
-            df, _ = read_csv_smart(path)
-            df = df.fillna("")
-            table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
-            return render_template("view.html", filename=filename, sheet_name=None, table_html=table_html, token=token)
-        else:
-            xls = pd.ExcelFile(path)
-            target_sheet = sheet_name or (xls.sheet_names[0] if xls.sheet_names else None)
-            if not target_sheet:
-                flash(tr("flash_no_sheets_found"))
-                return redirect(url_for("select", token=token))
-            df = xls.parse(target_sheet)
-            df = df.fillna("")
-            table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
-            return render_template("view.html", filename=filename, sheet_name=target_sheet, table_html=table_html, token=token)
+        df, _, target_sheet = _load_sheet_dataframe(path, filename, sheet_name or None)
+        table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+        return render_template("view.html", filename=filename, sheet_name=target_sheet, table_html=table_html, token=token)
     except Exception as e:
         flash(f"{tr('flash_failed_open_file')}: {e}")
         return redirect(url_for("select", token=token))
@@ -386,36 +655,18 @@ def render_multi():
         if not path.exists():
             continue
 
-        ext = filename.rsplit(".", 1)[1].lower()
         try:
-            if ext == "csv":
-                df, _ = read_csv_smart(path)
-                df = df.fillna("")
-                label = f"{filename}"
-                table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
-                views.append({
-                    "id": f"v_{len(views)}",
-                    "label": label,
-                    "filename": filename,
-                    "sheet_name": None,
-                    "table_html": table_html,
-                })
-            else:
-                xls = pd.ExcelFile(path)
-                target_sheet = sheet_name or (xls.sheet_names[0] if xls.sheet_names else None)
-                if not target_sheet:
-                    continue
-                df = xls.parse(target_sheet)
-                df = df.fillna("")
-                label = f"{filename} - {target_sheet}"
-                table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
-                views.append({
-                    "id": f"v_{len(views)}",
-                    "label": label,
-                    "filename": filename,
-                    "sheet_name": target_sheet,
-                    "table_html": table_html,
-                })
+            df, column_metadata, target_sheet = _load_sheet_dataframe(path, filename, sheet_name or None)
+            label = f"{filename}" if not target_sheet else f"{filename} - {target_sheet}"
+            table_html = df.to_html(classes="table table-striped table-sm", index=False, border=0, na_rep="")
+            views.append({
+                "id": f"v_{len(views)}",
+                "label": label,
+                "filename": filename,
+                "sheet_name": target_sheet,
+                "table_html": table_html,
+                "column_metadata": column_metadata,
+            })
         except Exception:
             continue
 
@@ -423,7 +674,7 @@ def render_multi():
         flash(tr("flash_selected_sheets_could_not_be_opened"))
         return redirect(url_for("select", token=token))
 
-    return render_template("multi_view.html", token=token, views=views)
+    return render_template("multi_view.html", token=token, views=views, column_format_presets=COLUMN_FORMAT_PRESETS)
 
 
 def _sanitize_sheet_name(name: str) -> str:
@@ -441,33 +692,42 @@ def export_excel():
     if not sheets or not isinstance(sheets, list):
         return {"error": tr("flash_select_at_least_one_sheet")}, 400
 
-    buf = BytesIO()
+    workbook = Workbook()
+    default_sheet = workbook.active
+    workbook.remove(default_sheet)
     used_names = set()
 
-    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        for item in sheets:
-            headers = item.get("headers") or []
-            rows = item.get("rows") or []
-            sheet_name = item.get("name") or "Sheet"
-            sheet_name = _sanitize_sheet_name(sheet_name)
-            # Ensure uniqueness
-            base = sheet_name
-            i = 1
-            while sheet_name in used_names:
-                suffix = f"_{i}"
-                sheet_name = _sanitize_sheet_name(base[: (31 - len(suffix))] + suffix)
-                i += 1
-            used_names.add(sheet_name)
+    for item in sheets:
+        headers = item.get("headers") or []
+        rows = item.get("rows") or []
+        column_formats = item.get("column_formats") or []
+        sheet_name = item.get("name") or "Sheet"
+        sheet_name = _sanitize_sheet_name(sheet_name)
+        base = sheet_name
+        i = 1
+        while sheet_name in used_names:
+            suffix = f"_{i}"
+            sheet_name = _sanitize_sheet_name(base[: (31 - len(suffix))] + suffix)
+            i += 1
+        used_names.add(sheet_name)
 
-            try:
-                df = pd.DataFrame(rows, columns=headers)
-            except Exception:
-                # Fallback: best-effort
-                df = pd.DataFrame(rows)
-                if headers:
-                    df.columns = headers[: len(df.columns)]
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
+        worksheet = workbook.create_sheet(title=sheet_name)
+        for col_idx, header in enumerate(headers, start=1):
+            worksheet.cell(row=1, column=col_idx, value=header)
 
+        for row_idx, row_values in enumerate(rows, start=2):
+            for col_idx, raw_value in enumerate(row_values, start=1):
+                column_meta = column_formats[col_idx - 1] if col_idx - 1 < len(column_formats) else {}
+                value, number_format = _coerce_export_cell(raw_value, column_meta)
+                cell = worksheet.cell(row=row_idx, column=col_idx, value=value)
+                if number_format:
+                    cell.number_format = number_format
+
+        for col_idx, _ in enumerate(headers, start=1):
+            worksheet.column_dimensions[get_column_letter(col_idx)].width = 18
+
+    buf = BytesIO()
+    workbook.save(buf)
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name=out_name, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
