@@ -1,68 +1,95 @@
-# Excel Viewer - Developer Guide
+﻿# Excel Viewer Developer Guide
 
 ## Purpose
-- Provide a simple web UI for viewing Excel/CSV, making light edits in the browser, and exporting to `.xlsx`
+
+This project provides a browser-based Excel/CSV workspace for:
+- quick review
+- inline edits
+- sheet comparison by mapping
+- export back to `.xlsx`
 
 ## Stack
-- Flask for the web app
-- Gunicorn for container serving
-- pandas and openpyxl for parsing/export
-- Server-rendered HTML templates with minimal client-side JavaScript
+
+- Flask + Gunicorn
+- pandas + openpyxl
+- Server-rendered HTML templates (`app/templates`)
+- Plain JavaScript on the client
 
 ## Run
-- `cd projects/excel`
-- `docker compose up --build`
-- Open `http://localhost:8080`
 
-## Config
-- `PORT` default `8000`
-- `MAX_UPLOAD_MB` default `16`
-- `UPLOAD_TTL_HOURS` default `24`
-- `FLASK_SECRET_KEY` default `dev`
+From `projects/excel`:
 
-## Current Feature Set
-- Upload multiple files
-- Per-file sheet selection helpers
-- Select multiple sheets across files
-- Tabbed viewing with row/column selection markers
-- Inline cell editing in the browser table
-- Export selected sheets to a newly generated `.xlsx`
-- ENG/VIE language switch
-- Searchable per-column filters with blank support
-- Row/column cleanup actions
-- Scrollable table container
-- Column format presets for export are in progress only
+1. Development (auto reload):
+   - `docker compose up -d --build dev`
+2. Production-like service:
+   - `docker compose up -d --build excel-viewer`
 
-## Important Limitations
-- The browser grid is text-first HTML, not a workbook-preserving Excel model
-- Format presets currently affect export only; they do not live-preview formatted values in the browser grid
-- Export builds a new workbook from the edited browser state instead of patching the original workbook
-- This app should be treated as a data editor, not a VBA-preserving workbook editor
+Open: `http://localhost:8080`
 
-## Routes
-- `GET /` upload UI
-- `POST /upload` save files under a temporary token directory
-- `GET /select/<token>` choose sheets across uploaded files
-- `POST /render_multi` render selected sheets in tabs
-- `POST /export` generate an `.xlsx` from the current browser payload
-- `GET /set-lang/<lang>` switch UI language
+Important:
+- `dev` and `excel-viewer` both map host port `8080` in current compose file.
+- Start only one service at a time.
 
-## Internals
-- Temp uploads live under `UPLOAD_ROOT` or the system temp directory
-- A daemon cleanup thread removes expired token directories
-- Rendering normalizes blanks with `fillna("")` and `na_rep=""`
-- Excel metadata inference captures source type and original number format for export helpers
-- Read-only workbook metadata scanning must stay row-streamed to avoid `openpyxl` performance regressions
+## Main Routes
 
-## Testing
-- `pytest projects/excel/tests -q`
-- Current automated coverage focuses on:
-  - sheet-name sanitization
-  - workbook metadata extraction
-  - upload/select/render/export route smoke tests
-- Tests should generate small workbook fixtures in code instead of depending on the checked-in demo workbook
+- `GET /` -> Upload page
+- `POST /upload` -> Save files by token
+- `GET /select/<token>` -> Select sheets across files
+- `POST /render_multi` -> Main tabbed workspace
+- `POST /render` -> Single-sheet view (legacy/optional)
+- `POST /export` -> Build and download `.xlsx`
+- `GET /set-lang/<lang>` -> Language switch
 
-## Suggested Next Work
-- Keep stabilizing route and export behavior with more tests before adding new spreadsheet semantics
-- Revisit format-presets only after the current export contract is documented and covered by tests
-- If workbook fidelity or VBA support becomes a real requirement, treat that as a separate architecture track
+## Key Features
+
+### Editing workspace
+- Tab per sheet
+- Inline cell editing
+- Row/column marker selection
+- Multi-cell drag selection
+- Column resizing
+- Find & Replace draggable popup
+- Undo for destructive structure edits
+
+### Filtering
+- Per-column dropdown filter panel
+- Search in unique values
+- Select all / clear subsets
+- Blank-value support
+
+### Colors
+- Fill color and text color tools
+- Excel-like quick palette + advanced picker
+
+### Advanced: Mapping Compare
+- Open from sidebar `Advanced`
+- Select left and right sheets
+- Define mapping pairs (left column <-> right column)
+- Mark one or more rows as KEY
+- Run compare with VBA-aligned color rules
+
+Color outputs:
+- KEY matched: blue
+- Non-key equal: green
+- Non-key different: red
+- Missing row on opposite side: orange
+- Internal duplicate KEY: purple (still participates in compare)
+
+## Data Handling Notes
+
+- Uploaded files live in tokenized temp folders
+- Expired folders are cleaned by a background TTL loop
+- Export is built in-memory then streamed to user
+- Sheet names are sanitized and deduplicated before writing
+
+## Security/Robustness Status
+
+- CSRF protection: enabled for POST routes
+- CSV parser: encoding and delimiter detection enabled
+- i18n: EN/VI JSON locale files
+
+## Known Next Steps
+
+- App factory + blueprints refactor
+- Parser/export/storage service split
+- Automated tests for compare/filter/export flows
