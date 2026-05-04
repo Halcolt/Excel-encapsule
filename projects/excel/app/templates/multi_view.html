@@ -14,10 +14,11 @@
       .sidebar .nav-buttons { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
       .collapse-toggle { border: none; background: #e4e9fb; border-radius: 999px; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: #1e2e66; box-shadow: inset 0 0 0 1px #d0d6f5; }
       .collapse-icon { transition: transform 0.2s ease; font-size: 1rem; line-height: 1; }
-      .logo-home { display: inline-flex; flex-direction: row-reverse; align-items: center; justify-content: flex-end; gap: 10px; text-decoration: none; color: #1d2a52; font-weight: 600; flex: 1; min-width: 0; margin-left: auto; }
+      .logo-home { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; text-decoration: none; color: #1d2a52; font-weight: 600; flex: 1; min-width: 0; margin-left: auto; }
       .logo-icon { width: 42px; height: 42px; border-radius: 8px; background: #2563eb; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(37,99,235,0.22); }
       .logo-icon svg { width: 28px; height: 28px; }
-      .logo-text { display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.1; }
+      .logo-icon { order: 2; }
+      .logo-text { order: 1; display: flex; flex-direction: column; align-items: flex-end; text-align: right; line-height: 1.1; }
       .logo-title { font-size: 0.95rem; letter-spacing: 0.01em; }
       .logo-subtitle { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.12em; color: #6170a0; }
       .sidebar.collapsed .logo-text { display: none; }
@@ -88,8 +89,30 @@
       .panel-hidden-controls { display: none; }
       .panel-menu h4 { margin: 0 0 6px; font-size: 0.9rem; color: #405275; }
       .panel-menu .filter-tags { min-height: 22px; }
-      .color-picker { display: flex; gap: 8px; align-items: center; }
-      .color-picker input[type=\"color\"] { width: 48px; height: 32px; padding: 0; border: none; background: transparent; cursor: pointer; }
+      .excel-color-toolbar { display: flex; flex-direction: column; gap: 10px; }
+      .excel-color-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+      .color-section-title { font-size: 0.82rem; color: #475569; margin: 0; font-weight: 600; }
+      .excel-color-picker { position: relative; }
+      .excel-color-trigger { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #b9c3d7; background: #fff; border-radius: 4px; height: 28px; padding: 0 7px; cursor: pointer; min-width: 58px; justify-content: center; }
+      .excel-color-trigger:hover { background: #f8fafc; }
+      .excel-color-trigger .caret { font-size: 0.65rem; color: #475569; }
+      .fill-preview { width: 17px; height: 15px; border: 1px solid #94a3b8; border-radius: 2px; background: #fff8b1; position: relative; }
+      .fill-preview.clear::after { content: ''; position: absolute; left: 1px; right: 1px; top: 7px; height: 2px; background: #dc2626; transform: rotate(-25deg); transform-origin: center; }
+      .text-preview { font-weight: 700; font-size: 0.92rem; line-height: 1; color: #111827; border-bottom: 2px solid currentColor; padding-bottom: 1px; min-width: 12px; text-align: center; }
+      .excel-color-menu { position: absolute; z-index: 1400; right: 0; top: calc(100% + 6px); width: 252px; background: #fff; border: 1px solid #cfd6e3; border-radius: 6px; box-shadow: 0 12px 30px rgba(15,23,42,0.2); padding: 8px; display: none; }
+      .excel-color-picker.open .excel-color-menu { display: block; }
+      .excel-color-action { width: 100%; border: none; background: #fff; border-radius: 4px; text-align: left; cursor: pointer; padding: 7px 8px; font-size: 0.84rem; color: #1e293b; display: inline-flex; align-items: center; gap: 8px; }
+      .excel-color-action:hover { background: #eff6ff; }
+      .excel-color-action + .excel-color-action { margin-top: 4px; }
+      .excel-color-action .swatch-auto { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #94a3b8; background: #fff; position: relative; }
+      .excel-color-action .swatch-auto.clear::after { content: ''; position: absolute; left: 1px; right: 1px; top: 6px; height: 2px; background: #dc2626; transform: rotate(-25deg); transform-origin: center; }
+      .excel-color-action .swatch-auto.text { display: inline-flex; align-items: center; justify-content: center; border: none; font-size: 0.82rem; font-weight: 700; color: #111827; background: transparent; }
+      .excel-color-section { margin-top: 8px; }
+      .excel-color-section-title { font-size: 0.76rem; color: #334155; font-weight: 700; margin-bottom: 5px; }
+      .excel-color-grid { display: grid; grid-template-columns: repeat(10, minmax(0,1fr)); gap: 4px; }
+      .excel-color-chip { width: 100%; aspect-ratio: 1 / 1; border: 1px solid #aab4c8; border-radius: 2px; cursor: pointer; }
+      .excel-color-chip:hover { outline: 1px solid #1d4ed8; outline-offset: 1px; }
+      .advanced-color-input { display: none; }
       .panel-main { flex: 1; min-width: 0; }
       .panel-menu label.include { font-size: 0.9rem; color: #333; display: flex; gap: 6px; align-items: center; }
       .sheet-name-input { width: 100%; padding: 6px 8px; border: 1px solid #c9d0e5; border-radius: 8px; box-sizing: border-box; }
@@ -152,6 +175,26 @@
       .search-result-ref { font-size: 0.78rem; color: #475569; font-weight: 600; }
       .search-result-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       td.cell-selected { outline: 2px solid #ff9800; outline-offset: -2px; }
+      .mapping-modal-backdrop { position: fixed; inset: 0; z-index: 1900; background: rgba(15,23,42,0.36); display: none; align-items: center; justify-content: center; padding: 24px; }
+      .mapping-modal-backdrop.open { display: flex; }
+      .mapping-modal { width: min(920px, 100%); max-height: calc(100vh - 48px); overflow: hidden; background: #fff; border: 1px solid #d5dce8; border-radius: 8px; box-shadow: 0 20px 52px rgba(15,23,42,0.25); display: flex; flex-direction: column; }
+      .mapping-modal header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+      .mapping-modal h2 { margin: 0; font-size: 1.02rem; }
+      .mapping-modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: hidden; }
+      .mapping-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+      .mapping-sheet-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; color: #334155; }
+      .mapping-sheet-grid select { width: 100%; padding: 8px 10px; border: 1px solid #cfd4f2; border-radius: 8px; }
+      .mapping-table-wrap { border: 1px solid #dbe3f1; border-radius: 8px; overflow: auto; max-height: min(52vh, 520px); }
+      .mapping-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+      .mapping-table th, .mapping-table td { border: 1px solid #dbe3f1; padding: 8px; font-size: 0.86rem; }
+      .mapping-table th { background: #f8fafc; font-weight: 700; color: #334155; text-align: left; }
+      .mapping-table td select { width: 100%; padding: 6px 8px; border: 1px solid #cfd4f2; border-radius: 6px; }
+      .mapping-table td.key-cell { text-align: center; }
+      .mapping-table td.remove-cell { width: 40px; text-align: center; }
+      .icon-btn { width: 28px; height: 28px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; cursor: pointer; color: #334155; }
+      .icon-btn:hover { background: #f1f5f9; }
+      .mapping-modal-footer { padding: 12px 16px 14px; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 0 0 auto; background: #fff; }
+      .mapping-status { font-size: 0.84rem; color: #475569; min-height: 1rem; }
       .lang .switch { display: inline-flex; border: 1px solid #ccc; border-radius: 999px; overflow: hidden; }
       .lang .switch a { padding: 6px 10px; text-decoration: none; color: #2266ee; background: #fff; border-right: 1px solid #ccc; font-weight: 600; font-size: 0.9rem; }
       .lang .switch a:last-child { border-right: none; }
@@ -203,6 +246,65 @@
                 <label>{{ t('selected_columns') }}<input type="text" data-role="col-input-global" readonly></label>
               </div>
             </div>
+            <div class="control-block">
+              <h4>{{ t('color_picker_label') }}</h4>
+              <div class="excel-color-toolbar">
+                <div class="excel-color-row">
+                  <div class="color-section-title">{{ t('fill_color_label') }}</div>
+                  <div class="excel-color-picker" data-role="excel-color-picker" data-kind="fill">
+                    <button class="excel-color-trigger" type="button" data-action="toggle-color-menu" data-kind="fill" aria-expanded="false">
+                      <span class="fill-preview" data-role="fill-color-preview"></span>
+                      <span class="caret">▼</span>
+                    </button>
+                    <div class="excel-color-menu" data-role="fill-color-menu">
+                      <button class="excel-color-action" type="button" data-action="pick-global-color" data-kind="fill" data-color="__CLEAR__">
+                        <span class="swatch-auto clear"></span>
+                        <span data-role="color-auto-label"></span>
+                      </button>
+                      <div class="excel-color-section">
+                        <div class="excel-color-section-title" data-role="color-theme-label"></div>
+                        <div class="excel-color-grid" data-role="fill-theme-grid"></div>
+                      </div>
+                      <div class="excel-color-section">
+                        <div class="excel-color-section-title" data-role="color-standard-label"></div>
+                        <div class="excel-color-grid" data-role="fill-standard-grid"></div>
+                      </div>
+                      <button class="excel-color-action" type="button" data-action="open-global-color-advanced" data-kind="fill">
+                        <span>{{ t('more_colors') }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="excel-color-row">
+                  <div class="color-section-title">{{ t('text_color_label') }}</div>
+                  <div class="excel-color-picker" data-role="excel-color-picker" data-kind="text">
+                    <button class="excel-color-trigger" type="button" data-action="toggle-color-menu" data-kind="text" aria-expanded="false">
+                      <span class="text-preview" data-role="text-color-preview">A</span>
+                      <span class="caret">▼</span>
+                    </button>
+                    <div class="excel-color-menu" data-role="text-color-menu">
+                      <button class="excel-color-action" type="button" data-action="pick-global-color" data-kind="text" data-color="__AUTO__">
+                        <span class="swatch-auto text">A</span>
+                        <span data-role="color-auto-label"></span>
+                      </button>
+                      <div class="excel-color-section">
+                        <div class="excel-color-section-title" data-role="color-theme-label"></div>
+                        <div class="excel-color-grid" data-role="text-theme-grid"></div>
+                      </div>
+                      <div class="excel-color-section">
+                        <div class="excel-color-section-title" data-role="color-standard-label"></div>
+                        <div class="excel-color-grid" data-role="text-standard-grid"></div>
+                      </div>
+                      <button class="excel-color-action" type="button" data-action="open-global-color-advanced" data-kind="text">
+                        <span>{{ t('more_colors') }}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <input class="advanced-color-input" type="color" data-role="color-input-global" value="#fff8b1">
+                <input class="advanced-color-input" type="color" data-role="text-color-input-global" value="#111827">
+              </div>
+            </div>
           </div>
         </div>
         <div class="menu-pane advanced-pane" data-global-pane="advanced">
@@ -215,15 +317,14 @@
                 <button class="btn danger" type="button" data-action="delete-blanks-global" disabled>{{ t('delete_blank_rows') }}</button>
               </div>
             </div>
-            <div class="control-block">
-              <h4>{{ t('color_picker_label') }}</h4>
-              <div class="color-picker">
-                <input type="color" data-role="color-input-global" value="#fff8b1">
-                <button class="btn secondary" type="button" data-action="apply-color-global">{{ t('apply_color') }}</button>
-              </div>
-            </div>
             <div class="control-block subtle">
-              <div class="advanced-placeholder">{{ t('advanced_placeholder') }}</div>
+              <h4>{{ "So sánh mapping" if current_lang == "vi" else "Mapping Compare" }}</h4>
+              <button class="btn secondary" type="button" data-action="open-mapping-compare">
+                {{ "Mở thiết lập so sánh" if current_lang == "vi" else "Open Compare Setup" }}
+              </button>
+              <div class="advanced-placeholder">
+                {{ "So sánh 2 sheet theo cột map + cột key, tô màu theo kết quả giống VBA." if current_lang == "vi" else "Compare two sheets with mapped columns + key columns, then colorize like VBA." }}
+              </div>
             </div>
           </div>
         </div>
@@ -339,6 +440,52 @@
       </div>
     </section>
 
+    <div class="mapping-modal-backdrop" data-role="mapping-modal" aria-hidden="true">
+      <div class="mapping-modal" role="dialog" aria-modal="true" aria-labelledby="mappingModalTitle">
+        <header>
+          <h2 id="mappingModalTitle">{{ "So sánh theo Mapping" if current_lang == "vi" else "Compare by Mapping" }}</h2>
+          <button class="modal-close" type="button" data-action="close-mapping-modal" aria-label="{{ t('back') }}">×</button>
+        </header>
+        <div class="mapping-modal-body">
+          <div class="mapping-sheet-grid">
+            <label>
+              <span>{{ "Sheet bên trái" if current_lang == "vi" else "Left Sheet" }}</span>
+              <select data-role="mapping-left-sheet"></select>
+            </label>
+            <label>
+              <span>{{ "Sheet bên phải" if current_lang == "vi" else "Right Sheet" }}</span>
+              <select data-role="mapping-right-sheet"></select>
+            </label>
+          </div>
+          <div class="mapping-table-wrap">
+            <table class="mapping-table">
+              <thead>
+                <tr>
+                  <th>{{ "Cột trái" if current_lang == "vi" else "Left Column" }}</th>
+                  <th>{{ "Cột phải" if current_lang == "vi" else "Right Column" }}</th>
+                  <th>{{ "KEY" if current_lang == "vi" else "KEY" }}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody data-role="mapping-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="mapping-modal-footer">
+          <div class="toolbar">
+            <button class="btn secondary" type="button" data-action="add-mapping-row">{{ "Thêm cặp cột" if current_lang == "vi" else "Add Mapping Row" }}</button>
+          </div>
+          <div class="toolbar">
+            <button class="btn secondary" type="button" data-action="close-mapping-modal">{{ t('back') }}</button>
+            <button class="btn primary" type="button" data-action="run-mapping-compare">{{ "Chạy so sánh" if current_lang == "vi" else "Run Compare" }}</button>
+          </div>
+        </div>
+        <div class="mapping-modal-footer" style="border-top:0; padding-top:0;">
+          <div class="mapping-status" data-role="mapping-status"></div>
+        </div>
+      </div>
+    </div>
+
     <script>
       const tabs = document.querySelectorAll('.tab');
       const panels = document.querySelectorAll('.panel');
@@ -355,7 +502,10 @@
       const deleteColsGlobalBtn = document.querySelector('[data-action="delete-cols-global"]');
       const deleteBlanksGlobalBtn = document.querySelector('[data-action="delete-blanks-global"]');
       const colorInputGlobal = document.querySelector('[data-role="color-input-global"]');
-      const applyColorGlobalBtn = document.querySelector('[data-action="apply-color-global"]');
+      const textColorInputGlobal = document.querySelector('[data-role="text-color-input-global"]');
+      const fillColorPreview = document.querySelector('[data-role="fill-color-preview"]');
+      const textColorPreview = document.querySelector('[data-role="text-color-preview"]');
+      const colorPickerWraps = document.querySelectorAll('[data-role="excel-color-picker"]');
       const exportModal = document.querySelector('[data-role="export-modal"]');
       const exportSheetList = document.querySelector('[data-role="export-sheet-list"]');
       const exportCount = document.querySelector('[data-role="export-count"]');
@@ -369,6 +519,16 @@
       const findNextGlobalBtn = document.querySelector('[data-action="find-next-global"]');
       const replaceGlobalBtn = document.querySelector('[data-action="replace-global"]');
       const replaceAllGlobalBtn = document.querySelector('[data-action="replace-all-global"]');
+      const mappingModal = document.querySelector('[data-role="mapping-modal"]');
+      const mappingLeftSheet = document.querySelector('[data-role="mapping-left-sheet"]');
+      const mappingRightSheet = document.querySelector('[data-role="mapping-right-sheet"]');
+      const mappingRows = document.querySelector('[data-role="mapping-rows"]');
+      const mappingStatus = document.querySelector('[data-role="mapping-status"]');
+      const DUP_KEY_COLOR = '#7030a0';
+      const KEY_MATCH_COLOR = 'rgb(0, 112, 192)';
+      const MATCH_COLOR = 'rgb(146, 208, 80)';
+      const DIFF_COLOR = 'rgb(255, 0, 0)';
+      const MISSING_COLOR = 'rgb(255, 192, 0)';
 
       collapseToggle?.addEventListener('click',()=>{
         if(!sidebarEl) return;
@@ -394,6 +554,7 @@
       document.addEventListener('keydown', ev=>{
         if(ev.key === 'Escape' && exportModal?.classList.contains('open')) closeExportModal();
         if(ev.key === 'Escape' && findPanel?.classList.contains('open')) closeFindPanel();
+        if(ev.key === 'Escape' && mappingModal?.classList.contains('open')) closeMappingModal();
         if((ev.ctrlKey || ev.metaKey) && (ev.key === 'z' || ev.key === 'Z')){
           const target = ev.target;
           const isTyping = target && (
@@ -412,8 +573,27 @@
       document.querySelectorAll('[data-action="close-find-panel"]').forEach(btn=>{
         btn.addEventListener('click', closeFindPanel);
       });
+      document.querySelectorAll('[data-action="open-mapping-compare"]').forEach(btn=>{
+        btn.addEventListener('click', openMappingModal);
+      });
+      document.querySelectorAll('[data-action="close-mapping-modal"]').forEach(btn=>{
+        btn.addEventListener('click', closeMappingModal);
+      });
+      document.querySelectorAll('[data-action="add-mapping-row"]').forEach(btn=>{
+        btn.addEventListener('click', ()=>appendMappingRow('', '', false));
+      });
+      document.querySelectorAll('[data-action="run-mapping-compare"]').forEach(btn=>{
+        btn.addEventListener('click', runMappingCompare);
+      });
       document.querySelectorAll('[data-role="filter-toggle"]').forEach(box=>{
         box.addEventListener('change',()=>setFiltersVisible(box.checked));
+      });
+      mappingLeftSheet?.addEventListener('change', handleMappingSheetChange);
+      mappingRightSheet?.addEventListener('change', handleMappingSheetChange);
+      mappingModal?.addEventListener('click', ev=>{
+        if(ev.target === mappingModal){
+          closeMappingModal();
+        }
       });
       undoTableBtn?.addEventListener('click',()=>undoTableChange(activePanel));
       setupDraggableFindPanel();
@@ -471,9 +651,10 @@
       colorInputGlobal?.addEventListener('input',()=>{
         const local = activePanel?.querySelector('[data-role="color-input"]');
         if(local) local.value = colorInputGlobal.value;
+        setGlobalColorPreview('fill', colorInputGlobal.value);
       });
-      applyColorGlobalBtn?.addEventListener('click',()=>{
-        activePanel?.querySelector('[data-action="apply-color"]')?.click();
+      textColorInputGlobal?.addEventListener('input',()=>{
+        setGlobalColorPreview('text', textColorInputGlobal.value);
       });
       findNextGlobalBtn?.addEventListener('click', handleFindNext);
       replaceGlobalBtn?.addEventListener('click', handleReplace);
@@ -498,6 +679,554 @@
       function closeFindPanel(){
         findPanel?.classList.remove('open');
         findPanel?.setAttribute('aria-hidden','true');
+      }
+
+      function setMappingStatus(message, isError=false){
+        if(!mappingStatus) return;
+        mappingStatus.textContent = message || '';
+        mappingStatus.style.color = isError ? '#b91c1c' : '#475569';
+      }
+
+      function openMappingModal(){
+        if(!mappingModal || !mappingLeftSheet || !mappingRightSheet || panels.length < 2){
+          alert('{{ "Cần ít nhất 2 sheet để so sánh." if current_lang == "vi" else "You need at least 2 sheets to compare." }}');
+          return;
+        }
+        mappingModal.classList.add('open');
+        mappingModal.setAttribute('aria-hidden','false');
+        populateMappingSheetSelectors();
+        populateDefaultMappingRows();
+        setMappingStatus('');
+      }
+
+      function closeMappingModal(){
+        mappingModal?.classList.remove('open');
+        mappingModal?.setAttribute('aria-hidden','true');
+      }
+
+      function populateMappingSheetSelectors(){
+        if(!mappingLeftSheet || !mappingRightSheet) return;
+        const panelOptions = Array.from(panels).map(panel=>({
+          id: panel.id,
+          label: panel.dataset.label || panel.id
+        }));
+        const leftPrev = mappingLeftSheet.value;
+        const rightPrev = mappingRightSheet.value;
+        mappingLeftSheet.innerHTML = '';
+        mappingRightSheet.innerHTML = '';
+        panelOptions.forEach(opt=>{
+          const leftOpt = document.createElement('option');
+          leftOpt.value = opt.id;
+          leftOpt.textContent = opt.label;
+          mappingLeftSheet.appendChild(leftOpt);
+          const rightOpt = document.createElement('option');
+          rightOpt.value = opt.id;
+          rightOpt.textContent = opt.label;
+          mappingRightSheet.appendChild(rightOpt);
+        });
+        if(leftPrev && panelOptions.some(o=>o.id===leftPrev)){
+          mappingLeftSheet.value = leftPrev;
+        }else{
+          mappingLeftSheet.selectedIndex = 0;
+        }
+        if(rightPrev && panelOptions.some(o=>o.id===rightPrev) && rightPrev !== mappingLeftSheet.value){
+          mappingRightSheet.value = rightPrev;
+        }else{
+          mappingRightSheet.selectedIndex = panelOptions.length > 1 ? 1 : 0;
+        }
+      }
+
+      function getPanelHeaders(panel){
+        const table = panel?.querySelector('table');
+        if(!table || !table.tHead) return [];
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const header = table.tHead.querySelector('tr[data-role="data-header"]');
+        if(!header) return [];
+        const headers = [];
+        for(let i=offset; i<header.cells.length; i++){
+          const clone = header.cells[i].cloneNode(true);
+          clone.querySelectorAll('button, .filter-btn, .col-resizer').forEach(el=>el.remove());
+          headers.push((clone.textContent || '').trim());
+        }
+        return headers.filter(Boolean);
+      }
+
+      function appendMappingRow(leftCol='', rightCol='', isKey=false){
+        if(!mappingRows) return;
+        const leftPanel = document.getElementById(mappingLeftSheet?.value || '');
+        const rightPanel = document.getElementById(mappingRightSheet?.value || '');
+        const leftHeaders = getPanelHeaders(leftPanel);
+        const rightHeaders = getPanelHeaders(rightPanel);
+        const row = document.createElement('tr');
+        const leftCell = document.createElement('td');
+        const rightCell = document.createElement('td');
+        const keyCell = document.createElement('td');
+        keyCell.className = 'key-cell';
+        const removeCell = document.createElement('td');
+        removeCell.className = 'remove-cell';
+
+        const leftSelect = document.createElement('select');
+        leftSelect.setAttribute('data-role', 'mapping-left-col');
+        leftHeaders.forEach(h=>{
+          const opt = document.createElement('option');
+          opt.value = h;
+          opt.textContent = h;
+          leftSelect.appendChild(opt);
+        });
+        if(leftCol && leftHeaders.includes(leftCol)){
+          leftSelect.value = leftCol;
+        }
+
+        const rightSelect = document.createElement('select');
+        rightSelect.setAttribute('data-role', 'mapping-right-col');
+        rightHeaders.forEach(h=>{
+          const opt = document.createElement('option');
+          opt.value = h;
+          opt.textContent = h;
+          rightSelect.appendChild(opt);
+        });
+        if(rightCol && rightHeaders.includes(rightCol)){
+          rightSelect.value = rightCol;
+        }
+
+        const keyBox = document.createElement('input');
+        keyBox.type = 'checkbox';
+        keyBox.setAttribute('data-role', 'mapping-is-key');
+        keyBox.checked = !!isKey;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'icon-btn';
+        removeBtn.textContent = '×';
+        removeBtn.title = '{{ "Xóa cặp cột" if current_lang == "vi" else "Remove mapping row" }}';
+        removeBtn.addEventListener('click', ()=>{
+          row.remove();
+          if(!mappingRows.querySelector('tr')){
+            appendMappingRow('', '', false);
+          }
+        });
+
+        leftCell.appendChild(leftSelect);
+        rightCell.appendChild(rightSelect);
+        keyCell.appendChild(keyBox);
+        removeCell.appendChild(removeBtn);
+        row.appendChild(leftCell);
+        row.appendChild(rightCell);
+        row.appendChild(keyCell);
+        row.appendChild(removeCell);
+        mappingRows.appendChild(row);
+      }
+
+      function populateDefaultMappingRows(){
+        if(!mappingRows) return;
+        mappingRows.innerHTML = '';
+        const leftPanel = document.getElementById(mappingLeftSheet?.value || '');
+        const rightPanel = document.getElementById(mappingRightSheet?.value || '');
+        const leftHeaders = getPanelHeaders(leftPanel);
+        const rightHeaders = getPanelHeaders(rightPanel);
+        const rightSet = new Set(rightHeaders);
+        const sameName = leftHeaders.filter(h=>rightSet.has(h));
+        if(sameName.length){
+          sameName.forEach((h, idx)=>appendMappingRow(h, h, idx===0));
+          return;
+        }
+        const limit = Math.min(leftHeaders.length, rightHeaders.length);
+        if(limit === 0){
+          appendMappingRow('', '', true);
+          return;
+        }
+        for(let i=0;i<limit;i++){
+          appendMappingRow(leftHeaders[i], rightHeaders[i], i===0);
+        }
+      }
+
+      function handleMappingSheetChange(){
+        if(!mappingLeftSheet || !mappingRightSheet) return;
+        if(mappingLeftSheet.value === mappingRightSheet.value){
+          const next = Array.from(mappingRightSheet.options).find(opt=>opt.value !== mappingLeftSheet.value);
+          if(next){
+            mappingRightSheet.value = next.value;
+          }
+        }
+        const previous = Array.from(mappingRows?.querySelectorAll('tr') || []).map(row=>({
+          left: row.querySelector('[data-role="mapping-left-col"]')?.value || '',
+          right: row.querySelector('[data-role="mapping-right-col"]')?.value || '',
+          key: !!row.querySelector('[data-role="mapping-is-key"]')?.checked
+        }));
+        mappingRows.innerHTML = '';
+        if(previous.length){
+          previous.forEach(item=>appendMappingRow(item.left, item.right, item.key));
+        }else{
+          populateDefaultMappingRows();
+        }
+      }
+
+      function collectMappingConfig(){
+        const rows = Array.from(mappingRows?.querySelectorAll('tr') || []);
+        const mappings = rows.map(row=>({
+          left: row.querySelector('[data-role="mapping-left-col"]')?.value || '',
+          right: row.querySelector('[data-role="mapping-right-col"]')?.value || '',
+          isKey: !!row.querySelector('[data-role="mapping-is-key"]')?.checked
+        })).filter(item=>item.left && item.right);
+        return mappings;
+      }
+
+      function normalizeCompareValue(value){
+        if(value === null || value === undefined) return '';
+        return String(value).replace(/\r/g, '').replace(/\n/g, '').trim();
+      }
+
+      function clearTableInterior(table){
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const rows = table.tBodies[0] ? Array.from(table.tBodies[0].rows) : [];
+        rows.forEach(row=>{
+          for(let c=offset; c<row.cells.length; c++){
+            row.cells[c].style.backgroundColor = '';
+          }
+        });
+      }
+
+      function getHeaderIndexMap(table){
+        const map = new Map();
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const header = table.tHead?.querySelector('tr[data-role="data-header"]');
+        if(!header) return map;
+        for(let c=offset; c<header.cells.length; c++){
+          const clone = header.cells[c].cloneNode(true);
+          clone.querySelectorAll('button, .filter-btn, .col-resizer').forEach(el=>el.remove());
+          const text = (clone.textContent || '').trim();
+          if(text && !map.has(text)){
+            map.set(text, c - offset);
+          }
+        }
+        return map;
+      }
+
+      function getRowCellValue(row, colIdx, offset){
+        const cell = row?.cells[colIdx + offset];
+        if(!cell) return '';
+        return normalizeCompareValue(cell.innerText);
+      }
+
+      function colorRow(row, color){
+        if(!row) return;
+        const offset = parseInt(row.closest('table')?.dataset.markerOffset || '0', 10);
+        for(let c=offset; c<row.cells.length; c++){
+          row.cells[c].style.backgroundColor = color;
+        }
+      }
+
+      function colorCell(row, colIdx, color){
+        if(!row) return;
+        const offset = parseInt(row.closest('table')?.dataset.markerOffset || '0', 10);
+        const cell = row.cells[colIdx + offset];
+        if(cell){
+          cell.style.backgroundColor = color;
+        }
+      }
+
+      function buildKeyBuckets(table, compareMappings, side){
+        const buckets = new Map();
+        const duplicateRows = new Set();
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const rows = table.tBodies[0] ? Array.from(table.tBodies[0].rows) : [];
+        rows.forEach(row=>{
+          const keyParts = [];
+          compareMappings.forEach(m=>{
+            if(!m.isKey) return;
+            const idx = side === 'left' ? m.leftIdx : m.rightIdx;
+            keyParts.push(getRowCellValue(row, idx, offset));
+          });
+          const key = keyParts.join('|');
+          if(!key){
+            return;
+          }
+          if(!buckets.has(key)){
+            buckets.set(key, []);
+          }
+          const arr = buckets.get(key);
+          arr.push(row);
+          if(arr.length > 1){
+            arr.forEach(r=>duplicateRows.add(r));
+          }
+        });
+        return { buckets, duplicateRows };
+      }
+
+      function removeRowsWithNullKeys(table, compareMappings, side){
+        const offset = parseInt(table.dataset.markerOffset || '0', 10);
+        const body = table.tBodies[0];
+        if(!body) return;
+        for(let i=body.rows.length - 1; i>=0; i--){
+          const row = body.rows[i];
+          let hasNull = false;
+          for(const m of compareMappings){
+            if(!m.isKey) continue;
+            const idx = side === 'left' ? m.leftIdx : m.rightIdx;
+            const value = getRowCellValue(row, idx, offset);
+            if(!value){
+              hasNull = true;
+              break;
+            }
+          }
+          if(hasNull){
+            row.remove();
+          }
+        }
+      }
+
+      function compareRowPair(leftRow, rightRow, compareMappings){
+        compareMappings.forEach(m=>{
+          if(m.isKey){
+            colorCell(leftRow, m.leftIdx, KEY_MATCH_COLOR);
+            colorCell(rightRow, m.rightIdx, KEY_MATCH_COLOR);
+            return;
+          }
+          const offsetLeft = parseInt(leftRow.closest('table')?.dataset.markerOffset || '0', 10);
+          const offsetRight = parseInt(rightRow.closest('table')?.dataset.markerOffset || '0', 10);
+          const v1 = getRowCellValue(leftRow, m.leftIdx, offsetLeft);
+          const v2 = getRowCellValue(rightRow, m.rightIdx, offsetRight);
+          const color = v1 === v2 ? MATCH_COLOR : DIFF_COLOR;
+          colorCell(leftRow, m.leftIdx, color);
+          colorCell(rightRow, m.rightIdx, color);
+        });
+      }
+
+      function runMappingCompare(){
+        setMappingStatus('');
+        const leftId = mappingLeftSheet?.value || '';
+        const rightId = mappingRightSheet?.value || '';
+        if(!leftId || !rightId || leftId === rightId){
+          setMappingStatus('{{ "Vui lòng chọn 2 sheet khác nhau." if current_lang == "vi" else "Please choose two different sheets." }}', true);
+          return;
+        }
+        const leftPanel = document.getElementById(leftId);
+        const rightPanel = document.getElementById(rightId);
+        const leftTable = getPanelTable(leftPanel);
+        const rightTable = getPanelTable(rightPanel);
+        if(!leftPanel || !rightPanel || !leftTable || !rightTable){
+          setMappingStatus('{{ "Không thể đọc dữ liệu sheet." if current_lang == "vi" else "Could not read sheet data." }}', true);
+          return;
+        }
+
+        const mappings = collectMappingConfig();
+        if(!mappings.length){
+          setMappingStatus('{{ "Vui lòng thêm ít nhất một cặp cột mapping." if current_lang == "vi" else "Please add at least one mapping row." }}', true);
+          return;
+        }
+        if(!mappings.some(m=>m.isKey)){
+          setMappingStatus('{{ "Vui lòng chọn ít nhất một cột KEY." if current_lang == "vi" else "Please mark at least one KEY column." }}', true);
+          return;
+        }
+
+        const leftHeaderMap = getHeaderIndexMap(leftTable);
+        const rightHeaderMap = getHeaderIndexMap(rightTable);
+        const compareMappings = [];
+        for(const m of mappings){
+          if(!leftHeaderMap.has(m.left)){
+            setMappingStatus(`{{ "Không tìm thấy cột bên trái:" if current_lang == "vi" else "Left column not found:" }} ${m.left}`, true);
+            return;
+          }
+          if(!rightHeaderMap.has(m.right)){
+            setMappingStatus(`{{ "Không tìm thấy cột bên phải:" if current_lang == "vi" else "Right column not found:" }} ${m.right}`, true);
+            return;
+          }
+          compareMappings.push({
+            left: m.left,
+            right: m.right,
+            isKey: m.isKey,
+            leftIdx: leftHeaderMap.get(m.left),
+            rightIdx: rightHeaderMap.get(m.right)
+          });
+        }
+
+        pushTableUndoSnapshot(leftPanel, leftTable);
+        pushTableUndoSnapshot(rightPanel, rightTable);
+
+        removeRowsWithNullKeys(leftTable, compareMappings, 'left');
+        removeRowsWithNullKeys(rightTable, compareMappings, 'right');
+        clearTableInterior(leftTable);
+        clearTableInterior(rightTable);
+
+        const leftBucketsInfo = buildKeyBuckets(leftTable, compareMappings, 'left');
+        const rightBucketsInfo = buildKeyBuckets(rightTable, compareMappings, 'right');
+        const allKeys = new Set([...leftBucketsInfo.buckets.keys(), ...rightBucketsInfo.buckets.keys()]);
+
+        allKeys.forEach(key=>{
+          const leftRows = leftBucketsInfo.buckets.get(key) || [];
+          const rightRows = rightBucketsInfo.buckets.get(key) || [];
+          if(leftRows.length && rightRows.length){
+            const pairs = Math.min(leftRows.length, rightRows.length);
+            for(let i=0; i<pairs; i++){
+              compareRowPair(leftRows[i], rightRows[i], compareMappings);
+            }
+            for(let i=pairs; i<leftRows.length; i++){
+              colorRow(leftRows[i], MISSING_COLOR);
+            }
+            for(let i=pairs; i<rightRows.length; i++){
+              colorRow(rightRows[i], MISSING_COLOR);
+            }
+            return;
+          }
+          leftRows.forEach(row=>colorRow(row, MISSING_COLOR));
+          rightRows.forEach(row=>colorRow(row, MISSING_COLOR));
+        });
+
+        compareMappings.filter(m=>m.isKey).forEach(m=>{
+          leftBucketsInfo.duplicateRows.forEach(row=>colorCell(row, m.leftIdx, DUP_KEY_COLOR));
+          rightBucketsInfo.duplicateRows.forEach(row=>colorCell(row, m.rightIdx, DUP_KEY_COLOR));
+        });
+
+        initializePanel(leftPanel, leftTable);
+        initializePanel(rightPanel, rightTable);
+        syncGlobalControls();
+
+        const duplicateCount = leftBucketsInfo.duplicateRows.size + rightBucketsInfo.duplicateRows.size;
+        const msg = duplicateCount > 0
+          ? `{{ "So sánh hoàn tất. Có KEY trùng nội bộ:" if current_lang == "vi" else "Compare completed. Internal duplicate keys:" }} ${duplicateCount}`
+          : '{{ "So sánh hoàn tất." if current_lang == "vi" else "Compare completed." }}';
+        setMappingStatus(msg, false);
+      }
+
+      const colorUiText = {
+        automatic: '{{ "Tự động" if current_lang == "vi" else "Automatic" }}',
+        theme: '{{ "Màu chủ đề" if current_lang == "vi" else "Theme Colors" }}',
+        standard: '{{ "Màu tiêu chuẩn" if current_lang == "vi" else "Standard Colors" }}'
+      };
+      const excelThemeRows = [
+        ['#ffffff','#000000','#e7e6e6','#44546a','#5b9bd5','#ed7d31','#a5a5a5','#ffc000','#4472c4','#70ad47'],
+        ['#f2f2f2','#7f7f7f','#d0cece','#d6dce4','#ddebf7','#fbe5d6','#ededed','#fff2cc','#d9e1f2','#e2f0d9'],
+        ['#d9d9d9','#595959','#aeaaaa','#adb9ca','#bdd7ee','#f8cbad','#dbdbdb','#ffe699','#b4c6e7','#c6e0b4'],
+        ['#bfbfbf','#3f3f3f','#7f7f7f','#8497b0','#9dc3e6','#f4b183','#c9c9c9','#ffd966','#8eaadb','#a9d18e'],
+        ['#a6a6a6','#262626','#595959','#323f4f','#2e75b6','#c55a11','#7b7b7b','#bf9000','#2f5597','#548235']
+      ];
+      const excelStandardColors = ['#c00000','#ff0000','#ffc000','#ffff00','#92d050','#00b050','#00b0f0','#0070c0','#002060','#7030a0'];
+
+      function setupGlobalColorMenus(){
+        document.querySelectorAll('[data-role="color-auto-label"]').forEach(el=>{
+          el.textContent = colorUiText.automatic;
+        });
+        document.querySelectorAll('[data-role="color-theme-label"]').forEach(el=>{
+          el.textContent = colorUiText.theme;
+        });
+        document.querySelectorAll('[data-role="color-standard-label"]').forEach(el=>{
+          el.textContent = colorUiText.standard;
+        });
+        renderColorGrid(document.querySelector('[data-role="fill-theme-grid"]'), 'fill', excelThemeRows.flat());
+        renderColorGrid(document.querySelector('[data-role="fill-standard-grid"]'), 'fill', excelStandardColors);
+        renderColorGrid(document.querySelector('[data-role="text-theme-grid"]'), 'text', excelThemeRows.flat());
+        renderColorGrid(document.querySelector('[data-role="text-standard-grid"]'), 'text', excelStandardColors);
+
+        document.addEventListener('click', ev=>{
+          const toggle = ev.target.closest('[data-action="toggle-color-menu"]');
+          if(toggle){
+            ev.preventDefault();
+            const wrap = toggle.closest('[data-role="excel-color-picker"]');
+            if(!wrap) return;
+            const willOpen = !wrap.classList.contains('open');
+            closeAllColorMenus();
+            if(willOpen){
+              wrap.classList.add('open');
+              toggle.setAttribute('aria-expanded', 'true');
+            }
+            return;
+          }
+
+          const pick = ev.target.closest('[data-action="pick-global-color"]');
+          if(pick){
+            ev.preventDefault();
+            const kind = pick.getAttribute('data-kind');
+            const color = pick.getAttribute('data-color');
+            if(kind && color){
+              applyGlobalColor(kind, color);
+            }
+            closeAllColorMenus();
+            return;
+          }
+
+          const advanced = ev.target.closest('[data-action="open-global-color-advanced"]');
+          if(advanced){
+            ev.preventDefault();
+            const kind = advanced.getAttribute('data-kind');
+            if(kind === 'fill'){
+              colorInputGlobal?.click();
+            } else if(kind === 'text'){
+              textColorInputGlobal?.click();
+            }
+            return;
+          }
+
+          if(!ev.target.closest('[data-role="excel-color-picker"]')){
+            closeAllColorMenus();
+          }
+        });
+
+        colorInputGlobal?.addEventListener('change', ()=>{
+          applyGlobalColor('fill', colorInputGlobal.value);
+          closeAllColorMenus();
+        });
+        textColorInputGlobal?.addEventListener('change', ()=>{
+          applyGlobalColor('text', textColorInputGlobal.value);
+          closeAllColorMenus();
+        });
+      }
+
+      function renderColorGrid(container, kind, colors){
+        if(!container) return;
+        container.innerHTML = '';
+        colors.forEach(color=>{
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'excel-color-chip';
+          btn.setAttribute('data-action', 'pick-global-color');
+          btn.setAttribute('data-kind', kind);
+          btn.setAttribute('data-color', color);
+          btn.style.background = color;
+          container.appendChild(btn);
+        });
+      }
+
+      function closeAllColorMenus(){
+        colorPickerWraps.forEach(wrap=>{
+          wrap.classList.remove('open');
+          const toggle = wrap.querySelector('[data-action="toggle-color-menu"]');
+          if(toggle){
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+
+      function setGlobalColorPreview(kind, color){
+        if(kind === 'fill' && fillColorPreview){
+          fillColorPreview.classList.toggle('clear', color === '__CLEAR__');
+          fillColorPreview.style.background = color === '__CLEAR__' ? '#ffffff' : color;
+          return;
+        }
+        if(kind === 'text' && textColorPreview){
+          const applied = color === '__AUTO__' ? '#111827' : color;
+          textColorPreview.style.color = applied;
+        }
+      }
+
+      function applyGlobalColor(kind, color){
+        const tbl = getPanelTable(activePanel);
+        if(!tbl) return;
+        if(kind === 'fill'){
+          if(colorInputGlobal){
+            colorInputGlobal.value = color === '__CLEAR__' ? '#ffffff' : color;
+            colorInputGlobal.dispatchEvent(new Event('input'));
+          }
+          applyColorToSelection(activePanel, tbl, 'fill', color);
+          setGlobalColorPreview('fill', color);
+          return;
+        }
+        if(kind === 'text'){
+          if(textColorInputGlobal && color !== '__AUTO__'){
+            textColorInputGlobal.value = color;
+          }
+          applyColorToSelection(activePanel, tbl, 'text', color);
+          setGlobalColorPreview('text', color);
+        }
       }
 
       function setupDraggableFindPanel(){
@@ -548,6 +1277,8 @@
         if(colorInputGlobal && colorLocal){
           colorInputGlobal.value = colorLocal.value || '#fff8b1';
         }
+        setGlobalColorPreview('fill', colorInputGlobal ? colorInputGlobal.value : '#fff8b1');
+        setGlobalColorPreview('text', textColorInputGlobal ? textColorInputGlobal.value : '#111827');
         syncGlobalFilters();
         syncGlobalSelection();
         updateGlobalActionButtons();
@@ -1343,10 +2074,13 @@
         if(removed) initializePanel(panel, table);
       }
 
-      function applyColorToSelection(panel, table){
-        const colorInput=panel.querySelector('[data-role=\"color-input\"]');
-        if(!colorInput) return;
-        const color=colorInput.value;
+      function applyColorToSelection(panel, table, mode='fill', overrideColor=null){
+        let color = overrideColor;
+        if(!color){
+          const colorInput=panel.querySelector('[data-role=\"color-input\"]');
+          if(!colorInput) return;
+          color=colorInput.value;
+        }
         if(!color) return;
         const offset=parseInt(table.dataset.markerOffset || '0',10);
         const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
@@ -1354,13 +2088,29 @@
         const colorCols = table._selectedCols && table._selectedCols.size>0;
         const colorCells = table._selectedCells && table._selectedCells.size>0;
         if(!colorRows && !colorCols && !colorCells) return;
+        const applyCellStyle = (cell) => {
+          if(!cell) return;
+          if(mode === 'text'){
+            if(color === '__AUTO__'){
+              cell.style.color = '';
+            } else {
+              cell.style.color = color;
+            }
+          } else {
+            if(color === '__CLEAR__'){
+              cell.style.backgroundColor = '';
+            } else {
+              cell.style.backgroundColor = color;
+            }
+          }
+        };
         if(colorRows){
           table._selectedRows.forEach(idx=>{
             const row=rows[idx];
             if(!row) return;
             for(let c=offset;c<row.cells.length;c++){
               const cell=row.cells[c];
-              if(cell) cell.style.backgroundColor=color;
+              applyCellStyle(cell);
             }
           });
         }
@@ -1368,14 +2118,14 @@
           table._selectedCols.forEach(colIdx=>{
             rows.forEach(row=>{
               const cell=row.cells[colIdx+offset];
-              if(cell) cell.style.backgroundColor=color;
+              applyCellStyle(cell);
             });
           });
         }
         if(colorCells){
           table._selectedCells.forEach(key=>{
             const cell=getCellByKey(table, key);
-            if(cell) cell.style.backgroundColor=color;
+            applyCellStyle(cell);
           });
         }
       }
@@ -1680,25 +2430,73 @@
       function attachCellSelection(table){
         table._selectedCells = new Set();
         if(table.dataset.cellSelectionBound==='1') return;
-        table.addEventListener('click',(ev)=>{
+        table.addEventListener('mousedown',(ev)=>{
+          if(ev.button !== 0) return;
           const cell=ev.target.closest('td');
           if(!cell || !table.contains(cell)) return;
           const row=cell.closest('tr');
           if(!row || row.parentElement?.tagName !== 'TBODY') return;
-          const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
-          const rowIdx=rows.indexOf(row);
-          if(rowIdx<0) return;
-          const offset=parseInt(table.dataset.markerOffset || '0',10);
-          const colIdx=Array.from(row.cells).indexOf(cell)-offset;
-          if(colIdx<0) return;
-          const key=`${rowIdx}:${colIdx}`;
+          const anchor = getCellIndices(table, cell);
+          if(anchor.rowIdx === undefined || anchor.colIdx === undefined) return;
+
           const additive = ev.ctrlKey || ev.metaKey;
-          if(!additive) table._selectedCells.clear();
-          if(additive && table._selectedCells.has(key)) table._selectedCells.delete(key);
-          else table._selectedCells.add(key);
-          refreshCellHighlights(table);
+          const base = additive ? new Set(table._selectedCells || []) : new Set();
+          table._dragCells = {
+            anchor,
+            current: anchor,
+            additive,
+            base,
+            moved: false,
+          };
+          document.body.style.userSelect = 'none';
+          applyCellDragSelection(table, anchor, anchor, base);
+        });
+
+        table.addEventListener('mouseover',(ev)=>{
+          if(!table._dragCells) return;
+          const cell=ev.target.closest('td');
+          if(!cell || !table.contains(cell)) return;
+          const row=cell.closest('tr');
+          if(!row || row.parentElement?.tagName !== 'TBODY') return;
+          const current = getCellIndices(table, cell);
+          if(current.rowIdx === undefined || current.colIdx === undefined) return;
+          const drag = table._dragCells;
+          if(drag.current.rowIdx !== current.rowIdx || drag.current.colIdx !== current.colIdx){
+            drag.moved = true;
+            drag.current = current;
+          }
+          applyCellDragSelection(table, drag.anchor, current, drag.base);
+        });
+
+        document.addEventListener('mouseup',()=>{
+          if(!table._dragCells) return;
+          const drag = table._dragCells;
+          if(!drag.moved && drag.additive){
+            const key = `${drag.anchor.rowIdx}:${drag.anchor.colIdx}`;
+            const finalSet = new Set(drag.base);
+            if(finalSet.has(key)) finalSet.delete(key); else finalSet.add(key);
+            table._selectedCells = finalSet;
+            refreshCellHighlights(table);
+          }
+          table._dragCells = null;
+          document.body.style.userSelect = '';
         });
         table.dataset.cellSelectionBound='1';
+      }
+
+      function applyCellDragSelection(table, anchor, current, base){
+        const rMin = Math.min(anchor.rowIdx, current.rowIdx);
+        const rMax = Math.max(anchor.rowIdx, current.rowIdx);
+        const cMin = Math.min(anchor.colIdx, current.colIdx);
+        const cMax = Math.max(anchor.colIdx, current.colIdx);
+        const next = new Set(base || []);
+        for(let r=rMin; r<=rMax; r++){
+          for(let c=cMin; c<=cMax; c++){
+            next.add(`${r}:${c}`);
+          }
+        }
+        table._selectedCells = next;
+        refreshCellHighlights(table);
       }
       function refreshCellHighlights(table){
         const rows=table.tBodies[0]?Array.from(table.tBodies[0].rows):[];
@@ -1738,6 +2536,8 @@
           resetSearchState(activePanel, true);
         }
       }
+
+      setupGlobalColorMenus();
     </script>
   </body>
   </html>
